@@ -39,7 +39,6 @@ on:
 
 permissions:
   contents: write
-  actions: write
 
 jobs:
   deploy:
@@ -78,16 +77,6 @@ jobs:
           echo "BUILD_REF=${BUILD_REF}" >> "$GITHUB_ENV"
           echo "Building docs from ref: ${BUILD_REF}"
 
-      - name: Set concise push run name
-        if: github.event_name == 'push'
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          commit_subject="$(git log -1 --format=%s)"
-          gh api --method PATCH \
-            "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
-            -f "name=${commit_subject} - ${GITHUB_REF_NAME}"
 
       - name: Fetch current metadata for historical refs
         env:

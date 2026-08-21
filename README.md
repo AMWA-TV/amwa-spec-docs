@@ -39,7 +39,6 @@ on:
 
 permissions:
   contents: write
-  actions: write
 
 concurrency:
   group: amwa-documentation-${{ github.repository }}
