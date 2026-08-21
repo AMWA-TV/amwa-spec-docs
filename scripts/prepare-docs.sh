@@ -66,6 +66,7 @@ if not config.is_file():
         'extra_javascript = ["javascripts/json-viewer.js"]\n\n'
         "[project.markdown_extensions.pymdownx.tabbed]\n"
         "alternate_style = true\n\n"
+        "[project.markdown_extensions.pymdownx.superfences]\n\n"
         "[project.markdown_extensions.toc]\n"
         "permalink = false\n\n"
         "[project.extra.version]\n"
