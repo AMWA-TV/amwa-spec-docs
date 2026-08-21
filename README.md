@@ -103,6 +103,8 @@ The caller repository should contain:
 - `zensical.toml`, with `provider = "mike"` under `project.extra.version`
 - optional root-level `APIs/` and `examples/` directories
 
+For historical refs that predate the Zensical migration, `prepare-docs.sh`
+generates a minimal `zensical.toml` in the build checkout when one is absent.
 `prepare-docs.sh` runs from the caller repository root. It stages optional
 assets, discovers RAML/JSON files, generates their pages, rewrites source links,
 and sets `site_url` to `public-docs-root`. Mike then appends the version. Do not

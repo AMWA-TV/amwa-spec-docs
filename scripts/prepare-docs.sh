@@ -19,13 +19,29 @@ TOOLKIT_DIR="${TOOLKIT_DIR:-.}"
 # version, so this must remain the unversioned public root.
 python3 - "${PUBLIC_DOCS_ROOT%/}/" <<'PY'
 from pathlib import Path
+import json
+import os
 import re
 import sys
 
 config = Path("zensical.toml")
-if config.is_file():
+site_url = sys.argv[1]
+
+if not config.is_file():
+    # Historical specification refs predate the shared Zensical migration.
+    # Give them a minimal config rather than requiring every old ref to be
+    # amended retroactively.
+    repository_name = os.environ.get("SITE_NAME", "documentation")
+    config.write_text(
+        "[project]\n"
+        f"site_name = {json.dumps(repository_name)}\n"
+        f"site_url = {json.dumps(site_url)}\n\n"
+        "[project.extra.version]\n"
+        'provider = "mike"\n',
+        encoding="utf-8",
+    )
+else:
     text = config.read_text(encoding="utf-8")
-    site_url = sys.argv[1]
     updated = re.sub(
         r"(?m)^site_url\s*=.*$",
         f'site_url = "{site_url}"',
