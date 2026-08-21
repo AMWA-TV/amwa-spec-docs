@@ -164,6 +164,38 @@ jobs:
             exit 1
           fi
 
+          # During migration, a release may exist in GitHub before its docs
+          # have been published with Mike. Build that selected ref now so the
+          # latest alias always points to a real published version.
+          git fetch origin gh-pages --depth=1
+          if ! git ls-tree -d --name-only origin/gh-pages -- "${latest_version}" | grep -Fxq "${latest_version}"; then
+            latest_source_ref="refs/tags/${latest_version}"
+            if ! git rev-parse --verify --quiet "${latest_source_ref}" >/dev/null; then
+              if git ls-remote --exit-code origin "refs/tags/${latest_version}" >/dev/null 2>&1; then
+                git fetch origin "refs/tags/${latest_version}:${latest_source_ref}"
+              else
+                latest_source_ref="refs/remotes/origin/${latest_version}"
+                if ! git rev-parse --verify --quiet "${latest_source_ref}" >/dev/null; then
+                  git fetch origin "refs/heads/${latest_version}:${latest_source_ref}"
+                fi
+              fi
+            fi
+
+            latest_workspace="${RUNNER_TEMP}/amwa-latest-docs"
+            rm -rf "${latest_workspace}"
+            git worktree add --detach "${latest_workspace}" "${latest_source_ref}"
+            (
+              cd "${latest_workspace}"
+              export BUILD_REF="${latest_version}"
+              export TOOLKIT_DIR="${GITHUB_WORKSPACE}/${TOOLKIT_DIR}"
+              bash "${TOOLKIT_DIR}/scripts/prepare-docs.sh"
+              zensical build --clean
+              mike deploy --push "${latest_version}"
+            )
+            git worktree remove --force "${latest_workspace}"
+            git fetch origin gh-pages --depth=1
+          fi
+
           echo "Updating latest alias to ${latest_version}"
           mike alias --push "${latest_version}" latest
 

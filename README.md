@@ -72,7 +72,9 @@ version represented by the triggering branch, release, or manually selected ref.
 After every versioned deployment, `latest` is aliased to the highest stable
 numeric GitHub release (for example `v1.2.0`). If there are no such releases,
 `latest` is aliased to the highest-numbered `v<major>.<minor>-dev` or
-`v<major>.<minor>.x` branch.
+`v<major>.<minor>.x` branch. If the selected release or branch has not yet
+been published to Mike's `gh-pages` tree, the workflow builds that ref first;
+this supports migrating repositories that already have historical releases.
 
 ### Inputs
 
