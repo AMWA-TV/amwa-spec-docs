@@ -21,7 +21,7 @@ A versioned repository can use a very small caller workflow:
 
 ```yaml
 name: Documentation
-run-name: ${{ github.event_name == 'push' && format('Push - {0}', github.ref_name) || github.event_name == 'release' && format('Release - {0}', github.event.release.tag_name) || format('Documentation - {0}', inputs.ref || github.ref_name) }}
+run-name: ${{ github.event_name == 'push' && 'Push' || github.event_name == 'release' && format('Release - {0}', github.event.release.tag_name) || format('Documentation - {0}', inputs.ref || github.ref_name) }}
 
 on:
   push:
@@ -36,6 +36,7 @@ on:
         description: Optional branch or tag to rebuild
         required: false
         default: ''
+
 
 permissions:
   contents: write
@@ -56,6 +57,10 @@ jobs:
       toolkit-ref: main
     secrets: inherit
 ```
+
+Push runs are named `Push`; GitHub shows the triggering branch separately
+in the run metadata. Release runs are named `Release - <tag>`, and manual runs
+are named `Documentation - <ref>`.
 
 For a single-version repository, use the same workflow with `versioned:
 false`:
