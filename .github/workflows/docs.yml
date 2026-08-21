@@ -77,6 +77,28 @@ jobs:
           echo "BUILD_REF=${BUILD_REF}" >> "$GITHUB_ENV"
           echo "Building docs from ref: ${BUILD_REF}"
 
+      - name: Fetch current metadata for historical refs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [[ -f zensical.toml ]]; then
+            exit 0
+          fi
+
+          default_branch="$(gh repo view "${GITHUB_REPOSITORY}" --json defaultBranchRef --jq '.defaultBranchRef.name')"
+          metadata_dir="${RUNNER_TEMP}/amwa-spec-metadata"
+          rm -rf "${metadata_dir}"
+          mkdir -p "${metadata_dir}"
+          git fetch origin "refs/heads/${default_branch}:refs/remotes/origin/${default_branch}"
+
+          if git cat-file -e "refs/remotes/origin/${default_branch}:README.md"; then
+            git show "refs/remotes/origin/${default_branch}:README.md" > "${metadata_dir}/README.md"
+          fi
+          if git cat-file -e "refs/remotes/origin/${default_branch}:zensical.toml"; then
+            git show "refs/remotes/origin/${default_branch}:zensical.toml" > "${metadata_dir}/zensical.toml"
+          fi
+          echo "METADATA_DIR=${metadata_dir}" >> "$GITHUB_ENV"
+
       - name: Fetch gh-pages branch
         run: git fetch origin gh-pages --depth=1 || true
 
@@ -169,19 +191,28 @@ jobs:
           # have been published with Mike. Build that selected ref now so the
           # latest alias always points to a real published version.
           git fetch origin gh-pages --depth=1
-          if ! git ls-tree -d --name-only origin/gh-pages -- "${latest_version}" | grep -Fxq "${latest_version}"; then
-            latest_source_ref="refs/tags/${latest_version}"
-            if ! git rev-parse --verify --quiet "${latest_source_ref}" >/dev/null; then
-              if git ls-remote --exit-code origin "refs/tags/${latest_version}" >/dev/null 2>&1; then
-                git fetch origin "refs/tags/${latest_version}:${latest_source_ref}"
-              else
-                latest_source_ref="refs/remotes/origin/${latest_version}"
-                if ! git rev-parse --verify --quiet "${latest_source_ref}" >/dev/null; then
-                  git fetch origin "refs/heads/${latest_version}:${latest_source_ref}"
-                fi
+          latest_source_ref="refs/tags/${latest_version}"
+          if ! git rev-parse --verify --quiet "${latest_source_ref}" >/dev/null; then
+            if git ls-remote --exit-code origin "refs/tags/${latest_version}" >/dev/null 2>&1; then
+              git fetch origin "refs/tags/${latest_version}:${latest_source_ref}"
+            else
+              latest_source_ref="refs/remotes/origin/${latest_version}"
+              if ! git rev-parse --verify --quiet "${latest_source_ref}" >/dev/null; then
+                git fetch origin "refs/heads/${latest_version}:${latest_source_ref}"
               fi
             fi
+          fi
 
+          latest_needs_build=false
+          if ! git ls-tree -d --name-only origin/gh-pages -- "${latest_version}" | grep -Fxq "${latest_version}"; then
+            latest_needs_build=true
+          elif ! git cat-file -e "${latest_source_ref}:zensical.toml"; then
+            # Rebuild versions previously published with the temporary
+            # fallback so their title, badges, and repository link are updated.
+            latest_needs_build=true
+          fi
+
+          if [[ "${latest_needs_build}" == "true" ]]; then
             latest_workspace="${RUNNER_TEMP}/amwa-latest-docs"
             rm -rf "${latest_workspace}"
             git worktree add --detach "${latest_workspace}" "${latest_source_ref}"

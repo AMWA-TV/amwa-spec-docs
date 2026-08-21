@@ -25,17 +25,43 @@ import re
 import sys
 
 config = Path("zensical.toml")
+readme = Path("README.md")
 site_url = sys.argv[1]
+metadata_dir_value = os.environ.get("METADATA_DIR")
+metadata_readme = (
+    Path(metadata_dir_value) / "README.md"
+    if metadata_dir_value
+    else Path(".amwa-metadata-unavailable")
+)
+
+
+def read_title(path):
+    if not path.is_file():
+        return None
+    for line in path.read_text(encoding="utf-8").splitlines():
+        match = re.match(r"^#\s+(.+?)\s*$", line)
+        if match:
+            return match.group(1)
+    return None
+
+
+metadata_title = read_title(metadata_readme)
+site_name = metadata_title or read_title(readme) or os.environ.get(
+    "SITE_NAME", "documentation"
+)
+repo_slug = os.environ.get("GITHUB_REPOSITORY", "documentation")
+repo_url = f"https://github.com/{repo_slug}"
 
 if not config.is_file():
     # Historical specification refs predate the shared Zensical migration.
-    # Give them a minimal config rather than requiring every old ref to be
-    # amended retroactively.
-    repository_name = os.environ.get("SITE_NAME", "documentation")
+    # Use current repository metadata for the site chrome while retaining the
+    # historical documentation content below.
     config.write_text(
         "[project]\n"
-        f"site_name = {json.dumps(repository_name)}\n"
-        f"site_url = {json.dumps(site_url)}\n\n"
+        f"site_name = {json.dumps(site_name)}\n"
+        f"site_url = {json.dumps(site_url)}\n"
+        f"repo_name = {json.dumps(repo_slug)}\n"
+        f"repo_url = {json.dumps(repo_url)}\n\n"
         "[project.extra.version]\n"
         'provider = "mike"\n',
         encoding="utf-8",
@@ -50,6 +76,20 @@ else:
     )
     if updated != text:
         config.write_text(updated, encoding="utf-8")
+
+# Keep the historical README body, but use the current metadata header so
+# published versions have the same title, badges, and repository link.
+if metadata_readme.is_file() and readme.is_file():
+    marker = "<!-- INTRO-START -->"
+    metadata_text = metadata_readme.read_text(encoding="utf-8")
+    historical_text = readme.read_text(encoding="utf-8")
+    if marker in metadata_text and marker in historical_text:
+        metadata_header = metadata_text.split(marker, 1)[0].rstrip()
+        historical_body = historical_text.split(marker, 1)[1]
+        readme.write_text(
+            f"{metadata_header}\n\n{marker}{historical_body}",
+            encoding="utf-8",
+        )
 PY
 
 if [[ ! -f README.md ]]; then
