@@ -61,7 +61,9 @@ if not config.is_file():
         f"site_name = {json.dumps(site_name)}\n"
         f"site_url = {json.dumps(site_url)}\n"
         f"repo_name = {json.dumps(repo_slug)}\n"
-        f"repo_url = {json.dumps(repo_url)}\n\n"
+        f"repo_url = {json.dumps(repo_url)}\n"
+        'extra_css = ["stylesheets/extra.css"]\n'
+        'extra_javascript = ["javascripts/json-viewer.js"]\n\n'
         "[project.extra.version]\n"
         'provider = "mike"\n',
         encoding="utf-8",
