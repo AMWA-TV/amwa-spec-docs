@@ -21,7 +21,7 @@ A versioned repository can use a very small caller workflow:
 
 ```yaml
 name: Documentation
-run-name: Documentation - ${{ inputs.ref || github.ref_name }}
+run-name: ${{ github.event_name == 'push' && format('Push - {0}', github.ref_name) || github.event_name == 'release' && format('Release - {0}', github.event.release.tag_name) || format('Documentation - {0}', inputs.ref || github.ref_name) }}
 
 on:
   push:
@@ -39,6 +39,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: amwa-documentation-${{ github.repository }}
