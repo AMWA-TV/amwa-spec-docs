@@ -21,6 +21,7 @@ A versioned repository can use a very small caller workflow:
 
 ```yaml
 name: Documentation
+run-name: Documentation - ${{ inputs.ref || github.ref_name }}
 
 on:
   push:
