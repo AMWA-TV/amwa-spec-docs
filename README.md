@@ -1,0 +1,152 @@
+# AMWA documentation toolkit
+
+Shared build scripts and a reusable GitHub Actions workflow for AMWA
+specification repositories, including `is-*`, `bcp-*`, `info-*`, and `in-*`
+repositories.
+
+The workflow builds a repository's Zensical site, stores versions with Mike on
+its `gh-pages` branch, and uploads the complete site to the AMWA documentation
+server at:
+
+```text
+/var/www/specs.amwa.tv/new/<site-name>
+```
+
+The server-facing root is a static redirect to `latest/`, so this does not
+require `.htaccess` or directory-specific Apache configuration.
+
+## Use from a documentation repository
+
+A versioned repository can use a very small caller workflow:
+
+```yaml
+name: Documentation
+
+on:
+  push:
+    branches:
+      - 'v[1-9]*.[0-9]*-dev'
+      - 'v[1-9]*.[0-9]*.x'
+      - 'publish-*'
+    tags:
+      - 'v[1-9]*.[0-9]*.[0-9]*'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Optional branch or tag to rebuild
+        required: false
+        default: ''
+      alias_latest:
+        description: Also update the latest alias for a selected version
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    uses: AMWA-TV/amwa-spec-docs/.github/workflows/docs.yml@main
+    with:
+      versioned: true
+      site-name: is-template
+      public-docs-root: https://specs.amwa.tv/new/is-template
+      source-ref: ${{ inputs.ref }}
+      alias-latest: ${{ inputs.alias_latest }}
+      # Use a released tag or commit SHA once the toolkit is released.
+      toolkit-ref: main
+    secrets: inherit
+```
+
+For a single-version repository, use the same workflow with `versioned:
+false`:
+
+```yaml
+jobs:
+  docs:
+    uses: AMWA-TV/amwa-spec-docs/.github/workflows/docs.yml@main
+    with:
+      versioned: false
+      site-name: in-template
+      public-docs-root: https://specs.amwa.tv/new/in-template
+    secrets: inherit
+```
+
+Single-version repositories publish only `latest/` on `gh-pages`; they do not
+create a duplicate version directory. Versioned repositories publish the
+version represented by the branch or tag. Branch builds also update `latest`,
+while release tag builds preserve the existing `latest` alias.
+
+### Inputs
+
+| Input | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `site-name` | no | caller repository name | Directory below `/new/` and upload name |
+| `public-docs-root` | yes | — | Unversioned public root used for canonical URLs |
+| `versioned` | no | `true` | Select versioned or fixed-`latest` Mike behavior |
+| `source-ref` | no | triggering ref | Build a selected branch/tag, useful for manual rebuilds |
+| `alias-latest` | no | `false` | On a manual versioned build, also update `latest` |
+| `toolkit-ref` | no | `main` | Shared toolkit ref; pin a release tag or SHA for production |
+
+The caller repository must give the reusable workflow `contents: write`, and
+must provide or inherit these secrets:
+
+- `SSH_USER`
+- `SSH_HOST`
+- `SSH_PRIVATE_KEY`
+- `SSH_KNOWN_HOSTS`
+
+`GITHUB_TOKEN` is used by Mike to push the `gh-pages` branch.
+
+## Repository requirements
+
+The caller repository should contain:
+
+- `README.md`
+- `docs/`
+- `zensical.toml`, with `provider = "mike"` under `project.extra.version`
+- optional root-level `APIs/` and `examples/` directories
+
+`prepare-docs.sh` runs from the caller repository root. It stages optional
+assets, discovers RAML/JSON files, generates their pages, rewrites source links,
+and sets `site_url` to `public-docs-root`. Mike then appends the version. Do not
+set `site_url` to a versioned path in the source configuration.
+
+The generated JSON pages use pretty-printed HTML with nested folding,
+`Expand all`/`Collapse all` controls, and no paperclip or heading permalink
+icons.
+
+## Local preview
+
+From a checked-out documentation repository, run the shared preview helper
+(the repositories and this toolkit can be sibling directories):
+
+```sh
+../amwa-spec-docs/scripts/local-render.sh
+```
+
+It copies the current working tree to a temporary directory, prepares and
+builds it there, and serves the result with Zensical. The working tree is not
+modified. Set `PORT`, `VENV_DIR`, or `RAML_DIR` to customize the local tools;
+set `KEEP_RENDER=1` to retain the generated temporary site after stopping the
+server.
+
+For a build without starting a server:
+
+```sh
+TOOLKIT_DIR=../amwa-spec-docs \
+  bash ../amwa-spec-docs/scripts/prepare-docs.sh
+zensical build --clean
+```
+
+The preparation step itself is normally run from the caller repository root.
+
+## Development and release policy
+
+The first consumers may temporarily use `@main`/`toolkit-ref: main` while this
+repository is being established. Once the interface is stable, publish a
+release tag (for example `v1.0.0`) and migrate consumers to that tag or, for
+strongest reproducibility, to a commit SHA. Changes to the reusable workflow
+should be treated as compatibility-sensitive because callers execute it
+remotely.

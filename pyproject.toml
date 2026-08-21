@@ -1,0 +1,8 @@
+[project]
+name = "amwa-spec-docs"
+version = "0.1.0"
+description = "Shared AMWA documentation rendering scripts"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
