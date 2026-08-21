@@ -22,11 +22,6 @@ on:
         required: false
         type: string
         default: ''
-      alias-latest:
-        description: Also publish a manually selected version under the latest alias
-        required: false
-        type: boolean
-        default: false
       toolkit-ref:
         description: Ref of amwa-spec-docs containing the shared build scripts
         required: false
@@ -133,24 +128,44 @@ jobs:
       - name: Deploy documentation with Mike
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ALIAS_LATEST: ${{ inputs['alias-latest'] }}
         run: |
           if [[ "${VERSIONED}" != "true" ]]; then
             mike deploy --push latest
-          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
-            if [[ "${ALIAS_LATEST}" == "true" ]]; then
-              mike deploy --push --update-aliases "${BUILD_REF}" latest
-            else
-              mike deploy --push "${BUILD_REF}"
-            fi
-          elif [[ "${GITHUB_REF_TYPE}" == "branch" ]]; then
-            mike deploy --push --update-aliases "${BUILD_REF}" latest
-          elif [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            mike deploy --push "${BUILD_REF}"
-          else
-            echo "error: unsupported event/ref type for versioned documentation" >&2
+            exit 0
+          fi
+
+          # Every versioned build is stored first. This also makes a release
+          # event available for the latest-alias calculation below.
+          mike deploy --push "${BUILD_REF}"
+
+          latest_version="$(
+            gh release list \
+              --repo "${GITHUB_REPOSITORY}" \
+              --limit 1000 \
+              --json tagName,isDraft,isPrerelease |
+            jq -r '.[] | select(.isDraft == false and .isPrerelease == false) | .tagName' |
+            awk '$0 ~ /^v[0-9]+\.[0-9]+\.[0-9]+$/ { print }' |
+            sort -V |
+            tail -n 1
+          )"
+
+          if [[ -z "${latest_version}" ]]; then
+            latest_version="$(
+              git ls-remote --heads origin |
+              awk '{ sub("^refs/heads/", "", $2); print $2 }' |
+              awk '$0 ~ /^v[0-9]+\.[0-9]+(-dev|\.x)$/ { print }' |
+              sort -V |
+              tail -n 1
+            )"
+          fi
+
+          if [[ -z "${latest_version}" ]]; then
+            echo "error: no stable release or version branch found for latest" >&2
             exit 1
           fi
+
+          echo "Updating latest alias to ${latest_version}"
+          mike alias --push "${latest_version}" latest
 
       - name: Export the updated Mike site
         run: |

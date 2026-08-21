@@ -25,22 +25,16 @@ name: Documentation
 on:
   push:
     branches:
-      - 'v[1-9]*.[0-9]*-dev'
-      - 'v[1-9]*.[0-9]*.x'
+      - 'v[0-9]+.[0-9]+-dev'
+      - 'v[0-9]+.[0-9]+.x'
       - 'publish-*'
-    tags:
-      - 'v[1-9]*.[0-9]*.[0-9]*'
+  release:
   workflow_dispatch:
     inputs:
       ref:
         description: Optional branch or tag to rebuild
         required: false
         default: ''
-      alias_latest:
-        description: Also update the latest alias for a selected version
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: write
@@ -52,8 +46,7 @@ jobs:
       versioned: true
       site-name: is-template
       public-docs-root: https://specs.amwa.tv/new/is-template
-      source-ref: ${{ inputs.ref }}
-      alias-latest: ${{ inputs.alias_latest }}
+      source-ref: ${{ inputs.ref || github.ref_name }}
       # Use a released tag or commit SHA once the toolkit is released.
       toolkit-ref: main
     secrets: inherit
@@ -75,8 +68,11 @@ jobs:
 
 Single-version repositories publish only `latest/` on `gh-pages`; they do not
 create a duplicate version directory. Versioned repositories publish the
-version represented by the branch or tag. Branch builds also update `latest`,
-while release tag builds preserve the existing `latest` alias.
+version represented by the triggering branch, release, or manually selected ref.
+After every versioned deployment, `latest` is aliased to the highest stable
+numeric GitHub release (for example `v1.2.0`). If there are no such releases,
+`latest` is aliased to the highest-numbered `v<major>.<minor>-dev` or
+`v<major>.<minor>.x` branch.
 
 ### Inputs
 
@@ -86,7 +82,6 @@ while release tag builds preserve the existing `latest` alias.
 | `public-docs-root` | yes | — | Unversioned public root used for canonical URLs |
 | `versioned` | no | `true` | Select versioned or fixed-`latest` Mike behavior |
 | `source-ref` | no | triggering ref | Build a selected branch/tag, useful for manual rebuilds |
-| `alias-latest` | no | `false` | On a manual versioned build, also update `latest` |
 | `toolkit-ref` | no | `main` | Shared toolkit ref; pin a release tag or SHA for production |
 
 The caller repository must give the reusable workflow `contents: write`, and
