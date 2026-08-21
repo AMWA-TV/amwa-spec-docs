@@ -198,7 +198,7 @@ jobs:
           fi
 
           echo "Updating latest alias to ${latest_version}"
-          mike alias --push "${latest_version}" latest
+          mike alias --push --update-aliases "${latest_version}" latest
 
       - name: Export the updated Mike site
         run: |
