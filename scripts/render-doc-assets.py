@@ -11,6 +11,7 @@ from __future__ import annotations
 import html
 import json
 import os
+import re
 import shutil
 import subprocess
 import textwrap
@@ -303,6 +304,36 @@ def render_examples() -> None:
     write(EXAMPLE_DOCS / "index.md", "\n".join(lines) + "\n")
 
 
+def raml_overview(path: Path) -> str:
+    """Extract the RAML documentation entry titled Overview."""
+    lines = path.read_text(encoding="utf-8").splitlines()
+    overview_title = re.compile(r"^(\s*)-\s+title:\s*['\"]?Overview['\"]?\s*$")
+
+    for index, line in enumerate(lines):
+        title_match = overview_title.match(line)
+        if not title_match:
+            continue
+        title_indent = len(title_match.group(1))
+        for content_index, content_line in enumerate(lines[index + 1 :], start=index + 1):
+            if content_line.strip() and len(content_line) - len(content_line.lstrip()) <= title_indent:
+                break
+            content_match = re.match(r"^(\s*)content:\s*(.*)$", content_line)
+            if not content_match:
+                continue
+            value = content_match.group(2).strip()
+            if value and value not in {"|", ">"}:
+                return value.strip("'\"").strip()
+
+            content_indent = len(content_match.group(1))
+            content_lines: list[str] = []
+            for body_line in lines[content_index + 1 :]:
+                if body_line.strip() and len(body_line) - len(body_line.lstrip()) <= content_indent:
+                    break
+                content_lines.append(body_line)
+            return textwrap.dedent("\n".join(content_lines)).strip()
+    return ""
+
+
 def render_apis() -> None:
     if not API_SOURCE.is_dir():
         return
@@ -328,9 +359,12 @@ def render_apis() -> None:
             cwd=ROOT,
             check=True,
         )
+        overview = raml_overview(raml_path)
+        overview_text = f"{overview}\n\n" if overview else ""
         write(
             output_md,
             f"# {relative.stem}\n\n"
+            f"{overview_text}"
             f"[Open {relative.stem} API documentation]({output.name})\n",
         )
         entries.append((relative.with_suffix(".md").as_posix(), relative.stem))
