@@ -316,6 +316,7 @@ def render_apis() -> None:
     for raml_path in raml_paths:
         relative = raml_path.relative_to(API_SOURCE)
         output = API_DOCS / relative.with_suffix(".html")
+        output_md = output.with_suffix(".md")
         output.parent.mkdir(parents=True, exist_ok=True)
         if not renderer:
             raise RuntimeError(
@@ -327,7 +328,12 @@ def render_apis() -> None:
             cwd=ROOT,
             check=True,
         )
-        entries.append((relative.with_suffix(".html").as_posix(), relative.stem))
+        write(
+            output_md,
+            f"# {relative.stem}\n\n"
+            f"[Open {relative.stem} API documentation]({output.name})\n",
+        )
+        entries.append((relative.with_suffix(".md").as_posix(), relative.stem))
 
     lines = ["# APIs", ""]
     for relative, title in entries:
