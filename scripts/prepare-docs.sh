@@ -141,9 +141,11 @@ shopt -s nullglob
 for file in docs/*.md; do
     [[ "${file}" == "docs/index.md" ]] && continue
     sed -i -E \
+        -e 's#\]\(\.\./APIs/schemas/#](__DOCS_SCHEMA_ASSET__/#g' \
         -e 's#\]\(\.\./APIs/#](__DOCS_ASSET__/APIs/#g' \
         -e 's#\]\(\.\./examples/#](__DOCS_ASSET__/examples/#g' \
         -e "s#\]\(\.\./([^)]+)\)#](${REPO_URL}/\1)#g" \
+        -e 's#\]\(__DOCS_SCHEMA_ASSET__/#](../schemas/#g' \
         -e 's#\]\(__DOCS_ASSET__/(APIs|examples)/#](../\1/#g' \
         -e "/^\{:\.no_toc\}/,/^[[:space:]]*\{:toc\}/d" \
         "${file}"

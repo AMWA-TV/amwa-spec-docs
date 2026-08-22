@@ -23,7 +23,7 @@ DOCS = ROOT / "docs"
 API_SOURCE = ROOT / "APIs"
 EXAMPLE_SOURCE = ROOT / "examples"
 API_DOCS = DOCS / "APIs"
-SCHEMA_DOCS = API_DOCS / "schemas"
+SCHEMA_DOCS = DOCS / "schemas"
 EXAMPLE_DOCS = DOCS / "examples"
 
 
@@ -233,6 +233,8 @@ def render_schemas() -> None:
         return
 
     schema_paths = sorted(source.rglob("*.json"))
+    if not schema_paths:
+        return
     resolved_dir = SCHEMA_DOCS / "resolved"
     raw_entries: list[tuple[str, str]] = []
 
@@ -243,6 +245,7 @@ def render_schemas() -> None:
         raw_json = SCHEMA_DOCS / relative
         raw_md = raw_json.with_suffix(".md")
         raw_value = load_json(schema_path)
+        raw_json.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(schema_path, raw_json)
         resolved_value = resolve_reference(raw_value, source)
 
@@ -276,8 +279,12 @@ def render_examples() -> None:
     if not EXAMPLE_SOURCE.is_dir():
         return
 
+    example_paths = sorted(EXAMPLE_SOURCE.rglob("*.json"))
+    if not example_paths:
+        return
+
     entries: list[tuple[str, str]] = []
-    for example_path in sorted(EXAMPLE_SOURCE.rglob("*.json")):
+    for example_path in example_paths:
         relative = example_path.relative_to(EXAMPLE_SOURCE)
         output_json = EXAMPLE_DOCS / relative
         output_md = output_json.with_suffix(".md")
@@ -285,7 +292,7 @@ def render_examples() -> None:
         entries.append((relative.with_suffix(".md").as_posix(), relative.name))
         write(
             output_md,
-            f"# Example: {relative.name}\n\n"
+            f"# {relative.name}\n\n"
             f"[Raw file]({relative.name})\n\n"
             + render_json(load_json(example_path)),
         )
@@ -301,6 +308,9 @@ def render_apis() -> None:
         return
 
     raml_paths = sorted(API_SOURCE.rglob("*.raml"))
+    if not raml_paths:
+        return
+
     entries: list[tuple[str, str]] = []
     renderer = os.environ.get("RAML2HTML_BIN", "")
     for raml_path in raml_paths:
