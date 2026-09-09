@@ -10,8 +10,9 @@ on:
         default: ''
       public-docs-root:
         description: Public unversioned documentation root, without a trailing slash
-        required: true
+        required: false
         type: string
+        default: ''
       versioned:
         description: Publish branch/tag versions as well as the latest alias
         required: false
@@ -46,7 +47,7 @@ jobs:
     env:
       SPEC_SERVER: specs.amwa.tv
       SITE_NAME: ${{ inputs['site-name'] || github.event.repository.name }}
-      PUBLIC_DOCS_ROOT: ${{ inputs['public-docs-root'] }}
+      PUBLIC_DOCS_ROOT: ${{ inputs['public-docs-root'] || format('https://specs.amwa.tv/new/{0}', github.event.repository.name) }}
       VERSIONED: ${{ inputs.versioned }}
       TOOLKIT_DIR: .amwa-spec-docs
 

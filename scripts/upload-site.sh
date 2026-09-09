@@ -12,6 +12,17 @@ for var in SSH_USER SSH_HOST SSH_PRIVATE_KEY SSH_KNOWN_HOSTS SPEC_SERVER SITE_NA
     fi
 done
 
+# Keep values that become SSH arguments separate. In particular, a placeholder
+# such as '-' in SSH_USER becomes an option-like target ("-@host").
+if [[ "${SSH_USER:0:1}" == "-" || "${SSH_USER}" == *"@"* || "${SSH_USER}" == *" "* ]]; then
+    echo "SSH_USER must be a username only (not '-', user@host, or an option)" >&2
+    exit 1
+fi
+if [[ "${SSH_HOST:0:1}" == "-" || "${SSH_HOST}" == *"://"* || "${SSH_HOST}" == *"/"* || "${SSH_HOST}" == *"@"* || "${SSH_HOST}" == *" "* ]]; then
+    echo "SSH_HOST must be a hostname only (not a URL, user@host, or an option)" >&2
+    exit 1
+fi
+
 if [[ ! -d site ]]; then
     echo "error: ./site not found (run zensical build first)" >&2
     exit 1
