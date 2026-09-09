@@ -125,7 +125,19 @@ jobs:
           echo "RAML2HTML_BIN=${RUNNER_TEMP}/raml2html/node_modules/.bin/raml2html" >> "$GITHUB_ENV"
 
       - name: Prepare docs tree for site build
-        run: bash "${TOOLKIT_DIR}/scripts/prepare-docs.sh"
+        run: |
+          bash "${TOOLKIT_DIR}/scripts/prepare-docs.sh"
+          test -s docs/images/AMWA-logo.png
+          grep -Fq "https://www.amwa.tv" docs/javascripts/amwa-branding.js
+          case "${GITHUB_REPOSITORY##*/}" in
+            in-*)
+              grep -Fq "https://static.wixstatic.com/media/219a48_9e03812d08064ed0a8be326563d9cb9c~mv2.png" docs/javascripts/amwa-branding.js
+              ;;
+            is-*|bcp-*|info-*)
+              test -s docs/images/NMOS-logo.png
+              grep -Fq "https://specs.amwa.tv/new/nmos" docs/javascripts/amwa-branding.js
+              ;;
+          esac
 
       - name: Build documentation
         run: zensical build --clean

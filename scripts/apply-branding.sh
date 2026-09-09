@@ -21,8 +21,29 @@ import shutil
 repo_name = os.environ["GITHUB_REPOSITORY"].rsplit("/", 1)[-1]
 toolkit_dir = Path(os.environ["TOOLKIT_DIR"])
 asset_names = ["AMWA-logo.png"]
-if repo_name.startswith(("is-", "bcp-", "info-")):
+logo_specs = [
+    {
+        "file": "AMWA-logo.png",
+        "alt": "AMWA logo",
+        "href": "https://www.amwa.tv",
+    }
+]
+if repo_name.startswith("in-"):
+    logo_specs.append(
+        {
+            "src": "https://static.wixstatic.com/media/219a48_9e03812d08064ed0a8be326563d9cb9c~mv2.png",
+            "alt": "JT-DMF logo",
+        }
+    )
+elif repo_name.startswith(("is-", "bcp-", "info-")):
     asset_names.append("NMOS-logo.png")
+    logo_specs.append(
+        {
+            "file": "NMOS-logo.png",
+            "alt": "NMOS logo",
+            "href": "https://specs.amwa.tv/new/nmos",
+        }
+    )
 
 for name in asset_names:
     source = toolkit_dir / "assets" / "images" / name
@@ -96,7 +117,8 @@ css = """\
   width: auto;
 }
 
-.amwa-header-branding a + a {
+.amwa-header-branding a + a,
+.amwa-header-branding a + img {
   border-left: 1px solid rgba(209, 228, 239, 0.7);
   padding-left: 0.45rem;
 }
@@ -110,18 +132,6 @@ css = """\
 Path("docs/stylesheets").mkdir(parents=True, exist_ok=True)
 Path("docs/stylesheets/amwa-branding.css").write_text(css, encoding="utf-8")
 
-logos = [
-    {
-        "file": name,
-        "alt": name.removesuffix("-logo.png") + " logo",
-        "href": (
-            "https://www.amwa.tv"
-            if name == "AMWA-logo.png"
-            else "https://specs.amwa.tv/new/nmos"
-        ),
-    }
-    for name in asset_names
-]
 js = f"""(() => {{
   const header = document.querySelector('.md-header__inner') || document.querySelector('header');
   if (!header || header.querySelector('.amwa-header-branding')) return;
@@ -132,15 +142,19 @@ js = f"""(() => {{
   branding.className = 'amwa-header-branding';
   branding.setAttribute('aria-label', 'AMWA branding');
 
-  for (const logo of {json.dumps(logos)}) {{
-    const link = document.createElement('a');
-    link.href = logo.href;
-    link.setAttribute('aria-label', logo.alt);
+  for (const logo of {json.dumps(logo_specs)}) {{
     const image = document.createElement('img');
-    image.src = assetUrl(logo.file);
+    image.src = logo.src || assetUrl(logo.file);
     image.alt = logo.alt;
-    link.appendChild(image);
-    branding.appendChild(link);
+    if (logo.href) {{
+      const link = document.createElement('a');
+      link.href = logo.href;
+      link.setAttribute('aria-label', logo.alt);
+      link.appendChild(image);
+      branding.appendChild(link);
+    }} else {{
+      branding.appendChild(image);
+    }}
   }}
 
   header.insertBefore(branding, header.firstChild);
