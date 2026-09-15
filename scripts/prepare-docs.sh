@@ -133,9 +133,37 @@ fi
 python3 "${TOOLKIT_DIR}/scripts/render-doc-assets.py"
 
 # Generate the documentation landing page from README.md. A docs/ directory
-# link in README points to the documentation currently being viewed.
+# link in README points to the documentation entry page currently present in
+# this ref. Historical refs commonly prefix that page with a section number
+# (for example, "1.0. Overview.md"), so do not assume the current filename.
+if ! DOCS_ENTRY="$(python3 - <<'PY'
+from pathlib import Path
+from urllib.parse import quote
+
+candidates = sorted(Path("docs").glob("*.md"))
+preferred = [
+    path for path in candidates
+    if path.name.casefold() == "overview.md"
+]
+if not preferred:
+    preferred = [
+        path for path in candidates
+        if "overview" in path.stem.casefold()
+    ]
+if not preferred:
+    preferred = [path for path in candidates if path.name.casefold() != "readme.md"]
+
+if not preferred:
+    raise SystemExit("error: no Markdown documentation entry page found in docs/")
+
+print(quote(preferred[0].name))
+PY
+)"; then
+    exit 1
+fi
+
 sed -E \
-    -e 's#\]\(docs/\)#](Overview.md)#g' \
+    -e "s#\]\(docs/\)#](${DOCS_ENTRY})#g" \
     -e 's#\]\(docs/([^)]+)\)#](\1)#g' \
     -e "s#\]\(\./?LICENSE(\.txt|\.md)?\)#](${REPO_URL}/LICENSE\1)#g" \
     -e "s#\]\(LICENSE(\.txt|\.md)?\)#](${REPO_URL}/LICENSE\1)#g" \
@@ -144,7 +172,7 @@ sed -E \
     -e "s#https://github.com/${REPO_SLUG}/blob/[0-9a-f]+/docs/([^)\" ]+)#\1#g" \
     README.md > docs/index.md
 
-echo "Generated docs/index.md from README.md"
+echo "Generated docs/index.md from README.md using ${DOCS_ENTRY}"
 
 # Rewrite links from docs/*.md to repository files. Also remove Jekyll-only
 # table-of-contents directives left in older documentation.
