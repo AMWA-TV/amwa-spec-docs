@@ -118,10 +118,6 @@ for directory in APIs examples manifest; do
     fi
 done
 
-# docs/README.md is a legacy Jekyll navigation source, not a documentation
-# page. The generated index pages and Zensical's implicit navigation replace it.
-rm -f docs/README.md
-
 # Generate foldable source pages for repositories that provide the shared
 # source-viewer assets (for example, IN-003's manifest and deployment files).
 if [[ -f docs/javascripts/source-viewer.js && -f docs/stylesheets/source-viewer.css ]]; then
@@ -131,6 +127,15 @@ fi
 # Render discovered RAML, schema, and example assets and generate their index
 # pages. This must happen after root-level assets have been staged into docs/.
 python3 "${TOOLKIT_DIR}/scripts/render-doc-assets.py"
+
+# Modern repositories maintain the intended left-hand navigation in
+# docs/README.md. Translate it after generated pages exist, then remove the
+# legacy source so it is not rendered as a documentation page. Historical refs
+# without this file retain Zensical's implicit navigation.
+if [[ -f docs/README.md ]]; then
+    python3 "${TOOLKIT_DIR}/scripts/generate-nav.py"
+    rm -f docs/README.md
+fi
 
 # Generate the documentation landing page from README.md. A docs/ directory
 # link in README points to the documentation entry page currently present in
