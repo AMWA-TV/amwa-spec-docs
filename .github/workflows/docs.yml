@@ -37,12 +37,12 @@ on:
         description: Regex for release tags to include when rebuilding all trees
         required: false
         type: string
-        default: '^v[0-9]+\\.[0-9]+$|^v[0-9]+\\.[0-9]+\\.[0-9]+$'
+        default: '^v[0-9]+\.[0-9]+$|^v[0-9]+\.[0-9]+\.[0-9]+$'
       branch-pattern:
         description: Regex for branches to include when rebuilding all trees
         required: false
         type: string
-        default: '^v[0-9]+\\.[0-9]+-dev$|^v[0-9]+\\.[0-9]+\\.x$|^publish-'
+        default: '^v[0-9]+\.[0-9]+-dev$|^v[0-9]+\.[0-9]+\.x$|^publish-'
     secrets:
       SSH_USER:
         required: true
@@ -281,6 +281,12 @@ jobs:
           git fetch origin gh-pages --depth=1 || true
           git ls-remote --heads --tags origin |
             python "${TOOLKIT_DIR}/scripts/list-version-refs.py" > "${RUNNER_TEMP}/version-refs.tsv"
+          echo "Matching refs to rebuild:"
+          cat "${RUNNER_TEMP}/version-refs.tsv"
+          if [[ ! -s "${RUNNER_TEMP}/version-refs.tsv" ]]; then
+            echo "error: no branches or tags matched the configured rebuild patterns" >&2
+            exit 1
+          fi
 
           while IFS=$'\t' read -r ref_kind ref_name; do
             [[ -z "${ref_name}" ]] && continue
