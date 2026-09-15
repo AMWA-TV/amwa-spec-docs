@@ -100,10 +100,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [[ -f zensical.toml ]]; then
-            exit 0
-          fi
-
           default_branch="$(gh repo view "${GITHUB_REPOSITORY}" --json defaultBranchRef --jq '.defaultBranchRef.name')"
           metadata_dir="${RUNNER_TEMP}/amwa-spec-metadata"
           rm -rf "${metadata_dir}"
@@ -115,6 +111,9 @@ jobs:
           fi
           if git cat-file -e "refs/remotes/origin/${default_branch}:zensical.toml"; then
             git show "refs/remotes/origin/${default_branch}:zensical.toml" > "${metadata_dir}/zensical.toml"
+          fi
+          if git cat-file -e "refs/remotes/origin/${default_branch}:spec.yml"; then
+            git show "refs/remotes/origin/${default_branch}:spec.yml" > "${metadata_dir}/spec.yml"
           fi
           echo "METADATA_DIR=${metadata_dir}" >> "$GITHUB_ENV"
 
@@ -161,7 +160,11 @@ jobs:
         run: zensical build --clean
 
       - name: Publish spec metadata
-        run: python "${TOOLKIT_DIR}/scripts/render-spec-json.py"
+        run: |
+          if [[ ! -f spec.yml && -n "${METADATA_DIR:-}" && -f "${METADATA_DIR}/spec.yml" ]]; then
+            cp "${METADATA_DIR}/spec.yml" spec.yml
+          fi
+          python "${TOOLKIT_DIR}/scripts/render-spec-json.py"
 
       - name: Generate global search manifest
         run: python "${TOOLKIT_DIR}/scripts/render-search-index.py"
@@ -263,6 +266,9 @@ jobs:
               export TOOLKIT_DIR="${GITHUB_WORKSPACE}/${TOOLKIT_DIR}"
               bash "${TOOLKIT_DIR}/scripts/prepare-docs.sh"
               zensical build --clean
+              if [[ ! -f spec.yml && -n "${METADATA_DIR:-}" && -f "${METADATA_DIR}/spec.yml" ]]; then
+                cp "${METADATA_DIR}/spec.yml" spec.yml
+              fi
               python "${TOOLKIT_DIR}/scripts/render-spec-json.py"
               python "${TOOLKIT_DIR}/scripts/render-search-index.py"
               mike deploy --push "${latest_version}"
@@ -311,6 +317,9 @@ jobs:
               export TOOLKIT_DIR="${GITHUB_WORKSPACE}/${TOOLKIT_DIR}"
               bash "${TOOLKIT_DIR}/scripts/prepare-docs.sh"
               zensical build --clean
+              if [[ ! -f spec.yml && -n "${METADATA_DIR:-}" && -f "${METADATA_DIR}/spec.yml" ]]; then
+                cp "${METADATA_DIR}/spec.yml" spec.yml
+              fi
               python "${TOOLKIT_DIR}/scripts/render-spec-json.py"
               python "${TOOLKIT_DIR}/scripts/render-search-index.py"
               mike deploy --push "${ref_name}"
