@@ -112,7 +112,7 @@ jobs:
       - name: Install Zensical and Mike
         run: |
           python -m pip install --upgrade pip
-          python -m pip install zensical
+          python -m pip install zensical pyyaml
           python -m pip install git+https://github.com/squidfunk/mike.git
 
       - name: Set up Node.js for RAML rendering
@@ -142,6 +142,9 @@ jobs:
 
       - name: Build documentation
         run: zensical build --clean
+
+      - name: Publish spec metadata
+        run: python "${TOOLKIT_DIR}/scripts/render-spec-json.py"
 
       - name: Install lychee
         run: sudo snap install lychee
@@ -236,6 +239,7 @@ jobs:
               export TOOLKIT_DIR="${GITHUB_WORKSPACE}/${TOOLKIT_DIR}"
               bash "${TOOLKIT_DIR}/scripts/prepare-docs.sh"
               zensical build --clean
+              python "${TOOLKIT_DIR}/scripts/render-spec-json.py"
               mike deploy --push "${latest_version}"
             )
             git worktree remove --force "${latest_workspace}"
@@ -251,6 +255,11 @@ jobs:
           mkdir site
           git fetch origin gh-pages --depth=1
           git archive origin/gh-pages | tar -x -C site
+          # Keep spec.json available at the unversioned site root as it was
+          # in the former Jekyll deployment, while documentation uses latest/.
+          if [[ -f site/latest/spec.json ]]; then
+            cp site/latest/spec.json site/spec.json
+          fi
           # Use a static redirect rather than .htaccess; server-level Apache
           # rules already apply to the AMWA documentation tree.
           cat > site/index.html <<'EOF'

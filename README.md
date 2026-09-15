@@ -13,7 +13,10 @@ server at:
 ```
 
 The server-facing root is a static redirect to `latest/`, so this does not
-require `.htaccess` or directory-specific Apache configuration.
+require `.htaccess` or directory-specific Apache configuration. Repositories
+that contain `spec.yml` also publish the same metadata as `spec.json` at the
+unversioned site root, for example `https://specs.amwa.tv/in-template/spec.json`.
+This makes repository metadata available without a source checkout.
 
 ## Use from a documentation repository
 
@@ -113,14 +116,15 @@ The caller repository should contain:
 - `README.md`
 - `docs/`
 - `zensical.toml`, with `provider = "mike"` under `project.extra.version`
-- optional root-level `APIs/` and `examples/` directories
+- optional root-level `APIs/`, `examples/`, and `manifest/` directories
 
 For historical refs that predate the Zensical migration, the workflow fetches
 metadata from the repository's current default branch. `prepare-docs.sh` then
 generates a minimal `zensical.toml` in the historical build checkout and uses
 the current metadata header (title, badges, and repository link) with the
 historical README body. `prepare-docs.sh` runs from the caller repository root. It stages optional
-assets, discovers RAML/JSON files, generates their pages, rewrites source links,
+assets, discovers RAML/JSON files, optionally generates foldable source pages when
+source-viewer assets are present, rewrites source links,
 and sets `site_url` to `public-docs-root`. Mike then appends the version. Do not
 set `site_url` to a versioned path in the source configuration.
 
@@ -138,10 +142,11 @@ From a checked-out documentation repository, run the shared preview helper
 ```
 
 It copies the current working tree to a temporary directory, prepares and
-builds it there, and serves the result with Zensical. The working tree is not
+builds it there, and serves the completed site. It watches the working tree and
+rebuilds automatically when source files change. The working tree is not
 modified. Set `PORT`, `VENV_DIR`, or `RAML_DIR` to customize the local tools;
 set `KEEP_RENDER=1` to retain the generated temporary site after stopping the
-server.
+server. The preview includes `spec.json` at its site root.
 
 For a build without starting a server:
 

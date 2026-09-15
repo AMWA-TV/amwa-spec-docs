@@ -111,7 +111,7 @@ fi
 
 # Zensical builds from docs/, while these optional source directories live at
 # repository root. Stage them into the temporary docs tree for the site build.
-for directory in APIs examples; do
+for directory in APIs examples manifest; do
     if [[ -d "${directory}" ]]; then
         rm -rf "docs/${directory}"
         cp -R "${directory}" "docs/${directory}"
@@ -121,6 +121,12 @@ done
 # docs/README.md is a legacy Jekyll navigation source, not a documentation
 # page. The generated index pages and Zensical's implicit navigation replace it.
 rm -f docs/README.md
+
+# Generate foldable source pages for repositories that provide the shared
+# source-viewer assets (for example, IN-003's manifest and deployment files).
+if [[ -f docs/javascripts/source-viewer.js && -f docs/stylesheets/source-viewer.css ]]; then
+    python3 "${TOOLKIT_DIR}/scripts/render-source-assets.py"
+fi
 
 # Render discovered RAML, schema, and example assets and generate their index
 # pages. This must happen after root-level assets have been staged into docs/.
