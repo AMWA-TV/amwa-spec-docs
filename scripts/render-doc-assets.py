@@ -8,7 +8,7 @@ all index pages by discovery rather than maintaining lists in configuration.
 
 from __future__ import annotations
 
-import html
+import base64
 import json
 import os
 import re
@@ -33,170 +33,324 @@ def write(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def json_scalar(value: Any) -> str:
-    if isinstance(value, str):
-        rendered = json.dumps(value, ensure_ascii=False)
-        return f'<span class="json-string">{html.escape(rendered)}</span>'
-    if value is True or value is False:
-        return f'<span class="json-boolean">{str(value).lower()}</span>'
-    if value is None:
-        return '<span class="json-null">null</span>'
-    return f'<span class="json-number">{html.escape(json.dumps(value))}</span>'
-
-
-def json_label(label: str | None) -> str:
-    if label is None:
-        return ""
-    return f'<span class="json-key">{html.escape(json.dumps(label))}</span>: '
-
-
-def json_tree(
-    value: Any,
-    label: str | None = None,
-    root: bool = False,
-    trailing_comma: bool = False,
-) -> str:
-    """Render JSON as a pretty, nested, collapsible HTML tree."""
-    comma = '<span class="json-comma">,</span>' if trailing_comma else ''
-    if not isinstance(value, (dict, list)):
-        return f'<div class="json-line">{json_label(label)}{json_scalar(value)}{comma}</div>'
-
-    is_array = isinstance(value, list)
-    opening = "[" if is_array else "{"
-    closing = "]" if is_array else "}"
-    summary = (
-        f'{json_label(label)}{opening} '
-        f'<span class="json-fold">…</span> '
-        f'<span class="json-collapsed-close">{closing}{comma}</span>'
-    )
-    lines = [
-        f'<details class="json-node"{" open" if root else ""}>',
-        f"  <summary>{summary}</summary>",
-        '  <div class="json-children">',
-    ]
-    items = list(enumerate(value)) if is_array else list(value.items())
-    for index, (key, child) in enumerate(items):
-        child_label = None if is_array else str(key)
-        rendered = json_tree(
-            child,
-            child_label,
-            False,
-            trailing_comma=index < len(items) - 1,
-        )
-        lines.append("    " + rendered.replace("\n", "\n    "))
-    closing_comma = '<span class="json-comma">,</span>' if trailing_comma else ''
-    lines.extend([
-        "  </div>",
-        f'  <div class="json-close">{closing}{closing_comma}</div>',
-        "</details>",
-    ])
-    return "\n".join(lines)
-
 
 def render_json(value: Any) -> str:
+    """Render JSON with the same foldable source viewer used for YAML assets."""
+    source = json.dumps(value, ensure_ascii=False, indent=2) + "\n"
+    encoded = base64.b64encode(source.encode("utf-8")).decode("ascii")
     return (
-        '<div class="json-viewer">\n'
-        '  <div class="json-controls" role="group" aria-label="JSON folding controls">\n'
-        '    <button type="button" class="json-control" data-json-action="expand">Expand all</button>\n'
-        '    <button type="button" class="json-control" data-json-action="collapse">Collapse all</button>\n'
-        '  </div>\n'
-        + json_tree(value, root=True)
-        + "\n</div>\n"
+        f'<div class="json-viewer" data-source="{encoded}" data-language="json">\n'
+        '  <label class="source-viewer-mode">View: '
+        '<select data-source-mode>\n'
+        '    <option value="folding" selected>Folding</option>\n'
+        '    <option value="raw">Raw</option>\n'
+        "  </select></label>\n"
+        '  <div class="source-viewer-folding">\n'
+        '    <div class="source-viewer-controls" role="group" '
+        'aria-label="JSON source controls">\n'
+        '      <button type="button" data-source-action="expand">'
+        "Expand all</button>\n"
+        '      <button type="button" data-source-action="collapse">'
+        "Collapse all</button>\n"
+        "    </div>\n"
+        '    <div class="source-editor" role="region" '
+        'aria-label="Foldable JSON source"></div>\n'
+        "  </div>\n"
+        '  <pre class="source-viewer-raw" hidden><code></code></pre>\n'
+        "</div>\n"
     )
 
 
 def render_json_js() -> str:
-    return """document.addEventListener("click", (event) => {
-  if (!(event.target instanceof Element)) return;
-  const button = event.target.closest("[data-json-action]");
-  if (!(button instanceof HTMLButtonElement)) return;
-  const viewer = button.closest(".json-viewer");
-  if (!viewer) return;
-  const expanded = button.dataset.jsonAction === "expand";
-  viewer.querySelectorAll("details.json-node").forEach((node) => {
-    node.open = expanded;
-  });
-});
-"""
+    return r'''(() => {
+  "use strict";
+
+  function decodeSource(encoded) {
+    const binary = window.atob(encoded);
+    const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  }
+
+  function addToken(container, text, className) {
+    if (!text) return;
+    const token = document.createElement("span");
+    token.className = className;
+    token.textContent = text;
+    container.appendChild(token);
+  }
+
+  function renderCode(line) {
+    const code = document.createElement("span");
+    code.className = "source-editor-code";
+    const pattern = /("(?:[^"\\]|\\.)*")|(-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)|(\b(?:true|false|null)\b)|([{}\[\],:])/g;
+    let position = 0;
+    let match;
+
+    while ((match = pattern.exec(line)) !== null) {
+      addToken(code, line.slice(position, match.index), "");
+      const tokenClass = match[1]
+        ? "source-token-string"
+        : match[2]
+          ? "source-token-number"
+          : match[3]
+            ? "source-token-boolean"
+            : "source-token-punctuation";
+      addToken(code, match[0], tokenClass);
+      position = pattern.lastIndex;
+    }
+    addToken(code, line.slice(position), "");
+    return code;
+  }
+
+  function indentation(line) {
+    const whitespace = line.match(/^[ \t]*/)[0];
+    return whitespace.replace(/\t/g, "  ").length;
+  }
+
+  function foldEnd(lines, start) {
+    if (lines[start].trim() === "") return null;
+    const currentIndent = indentation(lines[start]);
+    let next = start + 1;
+    while (next < lines.length && lines[next].trim() === "") next += 1;
+    if (next >= lines.length || indentation(lines[next]) <= currentIndent) return null;
+
+    let end = next;
+    while (end < lines.length) {
+      if (lines[end].trim() !== "" && indentation(lines[end]) <= currentIndent) break;
+      end += 1;
+    }
+    return end;
+  }
+
+  function createLine(lines, number, end) {
+    const row = document.createElement("div");
+    row.className = "source-editor-line";
+    row.dataset.line = String(number);
+
+    const gutter = document.createElement("span");
+    gutter.className = "source-editor-gutter";
+    if (end !== null) {
+      const toggle = document.createElement("button");
+      toggle.className = "source-editor-fold-toggle";
+      toggle.type = "button";
+      toggle.textContent = "⌄";
+      toggle.setAttribute("aria-label", "Collapse lines");
+      toggle.setAttribute("aria-expanded", "true");
+      toggle.dataset.foldEnd = String(end);
+      gutter.appendChild(toggle);
+    } else {
+      const spacer = document.createElement("span");
+      spacer.className = "source-editor-fold-spacer";
+      gutter.appendChild(spacer);
+    }
+
+    const lineNumber = document.createElement("span");
+    lineNumber.className = "source-editor-line-number";
+    lineNumber.textContent = String(number);
+    gutter.appendChild(lineNumber);
+    row.append(gutter, renderCode(lines[number - 1]));
+    return row;
+  }
+
+  function setFoldState(editor, row, collapsed) {
+    const toggle = row.querySelector(".source-editor-fold-toggle");
+    if (!toggle) return;
+    row.toggleAttribute("data-collapsed", collapsed);
+    toggle.textContent = collapsed ? "›" : "⌄";
+    toggle.setAttribute("aria-expanded", String(!collapsed));
+    toggle.setAttribute("aria-label", collapsed ? "Expand lines" : "Collapse lines");
+
+    const start = Number(row.dataset.line);
+    const end = Number(toggle.dataset.foldEnd);
+    editor.querySelectorAll(".source-editor-line").forEach(child => {
+      const number = Number(child.dataset.line);
+      if (number > start && number <= end) child.hidden = collapsed;
+    });
+  }
+
+  function initializeViewer(viewer) {
+    const editor = viewer.querySelector(".source-editor");
+    const source = decodeSource(viewer.dataset.source);
+    const lines = source.replace(/\r/g, "").split("\n");
+    const foldEnds = lines.map((line, index) => foldEnd(lines, index));
+    const rows = lines.map((line, index) => createLine(lines, index + 1, foldEnds[index]));
+    rows.forEach(row => editor.appendChild(row));
+
+    editor.querySelectorAll(".source-editor-fold-toggle").forEach(toggle => {
+      toggle.addEventListener("click", () => {
+        const row = toggle.closest(".source-editor-line");
+        setFoldState(editor, row, !row.hasAttribute("data-collapsed"));
+      });
+    });
+
+    viewer.querySelector('[data-source-action="expand"]').addEventListener("click", () => {
+      editor.querySelectorAll(".source-editor-line").forEach(row => setFoldState(editor, row, false));
+    });
+    viewer.querySelector('[data-source-action="collapse"]').addEventListener("click", () => {
+      editor.querySelectorAll(".source-editor-line").forEach(row => setFoldState(editor, row, row.querySelector(".source-editor-fold-toggle") !== null));
+    });
+
+    const rawView = viewer.querySelector(".source-viewer-raw");
+    rawView.querySelector("code").textContent = source;
+    const foldingView = viewer.querySelector(".source-viewer-folding");
+    viewer.querySelector("[data-source-mode]").addEventListener("change", event => {
+      const folding = event.target.value === "folding";
+      foldingView.hidden = !folding;
+      rawView.hidden = folding;
+    });
+  }
+
+  function initializeViewers() {
+    document.querySelectorAll(".json-viewer").forEach(viewer => {
+      if (viewer.dataset.initialized === "true") return;
+      try {
+        initializeViewer(viewer);
+        viewer.dataset.initialized = "true";
+      } catch (error) {
+        const message = document.createElement("p");
+        message.textContent = "Unable to render this JSON source file.";
+        viewer.appendChild(message);
+        console.error("Unable to initialize JSON source viewer", error);
+      }
+    });
+  }
+
+  if (typeof document$ !== "undefined") {
+    document$.subscribe(initializeViewers);
+  } else if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initializeViewers);
+  } else {
+    initializeViewers();
+  }
+})();
+'''
 
 
 def render_json_css() -> str:
     return """.json-viewer {
   margin: 1rem 0;
-  padding: 0.8rem 1rem;
   overflow-x: auto;
-  border-radius: 0.2rem;
-  background: var(--md-code-bg-color);
-  color: var(--md-code-fg-color);
-  font-family: var(--md-code-font-family, monospace);
-  font-size: 0.85rem;
-  line-height: 1.5;
 }
 
-.json-controls {
+.source-viewer-mode {
+  display: inline-block;
+  margin: 0 0 0.35rem;
+}
+
+.source-viewer-mode select {
+  margin-left: 0.25rem;
+}
+
+.source-viewer-controls {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.6rem;
+  gap: 0.35rem;
+  margin: 0 0 0.35rem;
 }
 
-.json-control {
-  background: var(--md-default-bg-color);
-  border: 1px solid var(--md-default-fg-color--lighter);
+.source-viewer-controls button {
+  border: 1px solid var(--md-default-fg-color--lightest);
   border-radius: 0.2rem;
+  background: var(--md-default-bg-color);
   color: var(--md-default-fg-color);
   cursor: pointer;
-  font: inherit;
-  padding: 0.2rem 0.5rem;
+  padding: 0.15rem 0.45rem;
 }
 
-.json-control:hover {
-  border-color: var(--md-accent-fg-color);
-  color: var(--md-accent-fg-color);
+.source-viewer-controls button:hover,
+.source-viewer-mode select:hover {
+  background: var(--md-default-fg-color--lightest);
 }
 
-.json-node > summary {
+.source-editor,
+.source-viewer-raw {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.2rem;
+  background: var(--md-code-bg-color, var(--md-default-bg-color));
+  color: var(--md-code-fg-color, var(--md-typeset-color));
+  font-family: var(--md-code-font-family, monospace);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  margin: 0;
+  overflow-x: auto;
+  padding: 0.35rem 0;
+}
+
+.source-viewer-raw code {
+  white-space: pre;
+}
+
+.source-editor-line {
+  min-height: 1.35em;
+  padding: 0 0.5rem 0 0;
+  white-space: pre;
+}
+
+.source-editor-line[hidden] {
+  display: none;
+}
+
+.source-editor-gutter {
+  display: inline-flex;
+  align-items: center;
+  width: 4.5em;
+}
+
+.source-editor-fold-toggle,
+.source-editor-fold-spacer {
+  display: inline-block;
+  width: 1.5em;
+}
+
+.source-editor-fold-toggle {
+  border: 0;
+  background: transparent;
+  color: var(--md-default-fg-color--light);
   cursor: pointer;
-  padding-left: 0 !important;
-  white-space: nowrap;
+  font: inherit;
+  line-height: 1;
+  padding: 0;
+  text-align: center;
 }
 
-.md-typeset .json-node > summary::before {
-  display: none !important;
+.source-editor-fold-toggle:hover {
+  color: var(--md-typeset-color);
 }
 
-.json-node[open] > summary > .json-fold,
-.json-node[open] > summary > .json-collapsed-close {
-  display: none !important;
+.source-editor-line-number {
+  color: var(--md-default-fg-color--light);
+  display: inline-block;
+  padding-right: 0.75em;
+  text-align: right;
+  user-select: none;
+  width: 2.5em;
 }
 
-.json-node:not([open]) > summary > .json-collapsed-close {
-  display: inline !important;
+.source-editor-code {
+  color: var(--md-code-fg-color, var(--md-typeset-color));
 }
 
-.headerlink {
-  display: none !important;
+.source-editor-line[data-collapsed] .source-editor-code::after {
+  color: var(--md-default-fg-color--light);
+  content: " ...";
 }
 
-.json-node > summary:hover {
-  color: var(--md-accent-fg-color);
+.source-token-string {
+  color: var(--md-code-hl-string-color, var(--md-typeset-color));
 }
 
-.json-children {
-  margin-left: 1.5rem;
-  padding-left: 1rem;
-  border-left: 1px solid var(--md-default-fg-color--lightest);
+.source-token-number,
+.source-token-boolean {
+  color: var(--md-code-hl-number-color, var(--md-typeset-color));
 }
 
-.json-line,
-.json-close {
-  white-space: pre-wrap;
+.source-token-punctuation {
+  color: var(--md-typeset-color);
 }
 
-.json-key { color: var(--md-code-hl-function-color); }
-.json-string { color: var(--md-code-hl-string-color); }
-.json-number { color: var(--md-code-hl-number-color); }
-.json-boolean, .json-null { color: var(--md-code-hl-constant-color); }
-.json-fold, .json-comma { opacity: 0.65; }
+.json-viewer .source-viewer-folding[hidden],
+.json-viewer .source-viewer-raw[hidden] {
+  display: none;
+}
 """
 
 
@@ -254,18 +408,16 @@ def render_schemas() -> None:
         resolved_json = resolved_dir / relative
         resolved_json.parent.mkdir(parents=True, exist_ok=True)
         resolved_json.write_text(json.dumps(resolved_value, indent=2) + "\n", encoding="utf-8")
-        raw_link = Path(os.path.relpath(raw_json, raw_md.parent)).as_posix()
-        resolved_link = Path(os.path.relpath(resolved_json, raw_md.parent)).as_posix()
+
+
         raw_tab = textwrap.indent(render_json(raw_value).rstrip(), "    ")
         resolved_tab = textwrap.indent(render_json(resolved_value).rstrip(), "    ")
         write(
             raw_md,
             f"# {relative.stem}\n\n"
             "=== \"With refs\"\n\n"
-            f"    [Raw file]({raw_link})\n\n"
             f"{raw_tab}\n\n"
             "=== \"Resolved\"\n\n"
-            f"    [Resolved JSON file]({resolved_link})\n\n"
             f"{resolved_tab}\n",
         )
 
@@ -294,7 +446,6 @@ def render_examples() -> None:
         write(
             output_md,
             f"# {relative.name}\n\n"
-            f"[Raw file]({relative.name})\n\n"
             + render_json(load_json(example_path)),
         )
 

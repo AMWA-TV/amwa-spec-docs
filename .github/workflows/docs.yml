@@ -28,6 +28,21 @@ on:
         required: false
         type: string
         default: main
+      rebuild-all:
+        description: Rebuild all matching branches and release tags into gh-pages
+        required: false
+        type: boolean
+        default: false
+      release-pattern:
+        description: Regex for release tags to include when rebuilding all trees
+        required: false
+        type: string
+        default: '^v[0-9]+\\.[0-9]+$|^v[0-9]+\\.[0-9]+\\.[0-9]+$'
+      branch-pattern:
+        description: Regex for branches to include when rebuilding all trees
+        required: false
+        type: string
+        default: '^v[0-9]+\\.[0-9]+-dev$|^v[0-9]+\\.[0-9]+\\.x$|^publish-'
     secrets:
       SSH_USER:
         required: true
@@ -49,6 +64,8 @@ jobs:
       SITE_NAME: ${{ inputs['site-name'] || github.event.repository.name }}
       PUBLIC_DOCS_ROOT: ${{ inputs['public-docs-root'] || format('https://specs.amwa.tv/new/{0}', github.event.repository.name) }}
       VERSIONED: ${{ inputs.versioned }}
+      RELEASE_PATTERN: ${{ inputs['release-pattern'] }}
+      BRANCH_PATTERN: ${{ inputs['branch-pattern'] }}
       TOOLKIT_DIR: .amwa-spec-docs
 
     steps:
@@ -134,7 +151,7 @@ jobs:
             in-*)
               grep -Fq "https://static.wixstatic.com/media/219a48_9e03812d08064ed0a8be326563d9cb9c~mv2.png" docs/javascripts/amwa-branding.js
               ;;
-            is-*|bcp-*|info-*)
+            is-*|ms-*|bcp-*|info-*)
               test -s docs/images/NMOS-logo.png
               grep -Fq "https://specs.amwa.tv/new/nmos" docs/javascripts/amwa-branding.js
               ;;
@@ -145,6 +162,9 @@ jobs:
 
       - name: Publish spec metadata
         run: python "${TOOLKIT_DIR}/scripts/render-spec-json.py"
+
+      - name: Generate global search manifest
+        run: python "${TOOLKIT_DIR}/scripts/render-search-index.py"
 
       - name: Install lychee
         run: sudo snap install lychee
@@ -199,6 +219,10 @@ jobs:
             )"
           fi
 
+          if [[ -z "${latest_version}" && "${BRANCH_PATTERN}" == *"^main$"* ]]; then
+            latest_version="main"
+          fi
+
           if [[ -z "${latest_version}" ]]; then
             echo "error: no stable release or version branch found for latest" >&2
             exit 1
@@ -240,6 +264,7 @@ jobs:
               bash "${TOOLKIT_DIR}/scripts/prepare-docs.sh"
               zensical build --clean
               python "${TOOLKIT_DIR}/scripts/render-spec-json.py"
+              python "${TOOLKIT_DIR}/scripts/render-search-index.py"
               mike deploy --push "${latest_version}"
             )
             git worktree remove --force "${latest_workspace}"
@@ -248,6 +273,45 @@ jobs:
 
           echo "Updating latest alias to ${latest_version}"
           mike alias --push --update-aliases "${latest_version}" latest
+
+      - name: Rebuild all matching version trees
+        if: inputs.versioned && inputs['rebuild-all']
+        run: |
+          git fetch origin --tags --prune
+          git fetch origin gh-pages --depth=1 || true
+          git ls-remote --heads --tags origin |
+            python "${TOOLKIT_DIR}/scripts/list-version-refs.py" > "${RUNNER_TEMP}/version-refs.tsv"
+
+          while IFS=$'\t' read -r ref_kind ref_name; do
+            [[ -z "${ref_name}" ]] && continue
+            if [[ "${ref_name}" == "${BUILD_REF}" ]]; then
+              echo "Skipping ${ref_kind} ${ref_name}; it was built above."
+              continue
+            fi
+
+            if [[ "${ref_kind}" == "tag" ]]; then
+              source_ref="refs/tags/${ref_name}"
+              git fetch origin "${source_ref}:${source_ref}"
+            else
+              source_ref="refs/remotes/origin/${ref_name}"
+              git fetch origin "refs/heads/${ref_name}:${source_ref}"
+            fi
+
+            workspace="$(mktemp -d "${RUNNER_TEMP}/amwa-version.XXXXXX")"
+            git worktree add --detach "${workspace}" "${source_ref}"
+            (
+              cd "${workspace}"
+              export BUILD_REF="${ref_name}"
+              export TOOLKIT_DIR="${GITHUB_WORKSPACE}/${TOOLKIT_DIR}"
+              bash "${TOOLKIT_DIR}/scripts/prepare-docs.sh"
+              zensical build --clean
+              python "${TOOLKIT_DIR}/scripts/render-spec-json.py"
+              python "${TOOLKIT_DIR}/scripts/render-search-index.py"
+              mike deploy --push "${ref_name}"
+            )
+            git worktree remove --force "${workspace}"
+            git fetch origin gh-pages --depth=1
+          done < "${RUNNER_TEMP}/version-refs.tsv"
 
       - name: Export the updated Mike site
         run: |
@@ -260,19 +324,25 @@ jobs:
           if [[ -f site/latest/spec.json ]]; then
             cp site/latest/spec.json site/spec.json
           fi
+          if [[ -f site/latest/global-search.json ]]; then
+            cp site/latest/global-search.json site/global-search.json
+          fi
           # Use a static redirect rather than .htaccess; server-level Apache
-          # rules already apply to the AMWA documentation tree.
-          cat > site/index.html <<'EOF'
+          # rules already apply to the AMWA documentation tree. Use an
+          # absolute path so the redirect also works when the request omits
+          # the trailing slash (for example, /new/in-003).
+          latest_url="/new/${SITE_NAME}/latest/"
+          cat > site/index.html <<EOF
           <!doctype html>
           <html lang="en">
           <head>
             <meta charset="utf-8">
-            <meta http-equiv="refresh" content="0; url=latest/">
-            <link rel="canonical" href="latest/">
+            <meta http-equiv="refresh" content="0; url=${latest_url}">
+            <link rel="canonical" href="${latest_url}">
             <title>Redirecting to the latest documentation</title>
           </head>
           <body>
-            <p><a href="latest/">Go to the latest documentation</a></p>
+            <p><a href="${latest_url}">Go to the latest documentation</a></p>
           </body>
           </html>
           EOF

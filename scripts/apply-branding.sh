@@ -37,7 +37,7 @@ if repo_name.startswith("in-"):
             "href": "https://specs.amwa.tv/in-index",
         }
     )
-elif repo_name.startswith(("is-", "bcp-", "info-")):
+elif repo_name.startswith(("is-", "ms-", "bcp-", "info-")):
     asset_names.append("NMOS-logo.png")
     logo_specs.append(
         {

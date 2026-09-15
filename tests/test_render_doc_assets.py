@@ -11,22 +11,24 @@ SPEC.loader.exec_module(MODULE)
 
 
 class JsonRenderingTests(unittest.TestCase):
-    def test_open_object_summary_has_no_collapsed_closing_brace(self):
+    def test_json_uses_the_foldable_source_viewer(self):
         rendered = MODULE.render_json({"code": {"type": "integer"}})
 
-        self.assertIn('<details class="json-node" open>', rendered)
-        self.assertIn('{ <span class="json-fold">…</span>', rendered)
-        self.assertIn('<span class="json-collapsed-close">}</span>', rendered)
-        self.assertIn('<span class="json-key">&quot;code&quot;</span>: {', rendered)
-        self.assertIn('<span class="json-key">&quot;type&quot;</span>: ', rendered)
+        self.assertIn('<div class="json-viewer"', rendered)
+        self.assertIn('data-language="json"', rendered)
+        self.assertIn('data-source=', rendered)
+        self.assertIn('value="folding" selected', rendered)
+        self.assertIn('value="raw"', rendered)
+        self.assertNotIn("Raw file", rendered)
+        self.assertNotIn("Resolved JSON file", rendered)
 
     def test_controls_and_nested_folding_are_rendered(self):
         rendered = MODULE.render_json({"required": ["code"], "properties": {}})
 
-        self.assertIn('data-json-action="expand"', rendered)
-        self.assertIn('data-json-action="collapse"', rendered)
-        self.assertGreaterEqual(rendered.count('class="json-node"'), 3)
-        self.assertIn('class="json-children"', rendered)
+        self.assertIn('data-source-action="expand"', rendered)
+        self.assertIn('data-source-action="collapse"', rendered)
+        self.assertIn('class="source-editor"', rendered)
+        self.assertIn('aria-label="Foldable JSON source"', rendered)
 
 
 if __name__ == "__main__":

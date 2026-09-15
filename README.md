@@ -1,7 +1,7 @@
 # AMWA documentation toolkit
 
 Shared build scripts and a reusable GitHub Actions workflow for AMWA
-specification repositories, including `is-*`, `bcp-*`, `info-*`, and `in-*`
+specification repositories, including `is-*`, `ms-*`, `bcp-*`, `info-*`, and `in-*`
 repositories.
 
 The workflow builds a repository's Zensical site, stores versions with Mike on
@@ -65,6 +65,11 @@ Push runs use GitHub's default commit title; GitHub shows the triggering
 branch separately in the run metadata. Release runs are named `Release - <tag>`,
 and manual runs are named `Documentation - <ref>`.
 
+For an occasional full reconstruction of a versioned site's Mike tree, manually
+dispatch the caller workflow with `rebuild_all: true`. This enumerates the
+configured release and branch patterns and rebuilds each matching ref into
+`gh-pages`; ordinary pushes and releases remain incremental.
+
 For a single-version repository, use the same workflow with `versioned:
 false`:
 
@@ -98,6 +103,9 @@ this supports migrating repositories that already have historical releases.
 | `versioned` | no | `true` | Select versioned or fixed-`latest` Mike behavior |
 | `source-ref` | no | triggering ref | Build a selected branch/tag, useful for manual rebuilds |
 | `toolkit-ref` | no | `main` | Shared toolkit ref; pin a release tag or SHA for production |
+| `rebuild-all` | no | `false` | Manual recovery/migration mode: rebuild all matching refs into Mike's `gh-pages` tree |
+| `release-pattern` | no | SemVer tags | Regex used by `rebuild-all` to select release tags |
+| `branch-pattern` | no | Version branches and `publish-*` | Regex used by `rebuild-all` to select branches |
 
 The caller repository must give the reusable workflow `contents: write`, and
 must provide or inherit these secrets:
@@ -128,9 +136,15 @@ source-viewer assets are present, rewrites source links,
 and sets `site_url` to `public-docs-root`. Mike then appends the version. Do not
 set `site_url` to a versioned path in the source configuration.
 
-The generated JSON pages use pretty-printed HTML with nested folding,
-`Expand all`/`Collapse all` controls, and no paperclip or heading permalink
-icons.
+The generated JSON pages use the same foldable source viewer as the YAML
+source pages, with `Folding`/`Raw` views, line numbers, nested folding,
+and `Expand all`/`Collapse all` controls. The generated pages do not add
+separate raw-file links.
+
+Each build also writes `global-search.json` at the site root. It is a compact
+manifest of the built HTML pages, intended for the central NMOS index to merge
+into the static global search at
+`https://specs.amwa.tv/new/nmos/global-search/`.
 
 ## Local preview
 

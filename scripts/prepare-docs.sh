@@ -101,7 +101,7 @@ PY
 
 # Stage the shared AMWA branding and add it to the Zensical header. The
 # repository family determines whether the NMOS logo is included: IN repos use
-# AMWA only; IS, BCP, and INFO repos use both logos.
+# AMWA only; IS, MS, BCP, and INFO repos use both logos.
 bash "${TOOLKIT_DIR}/scripts/apply-branding.sh"
 
 if [[ ! -f README.md ]]; then
