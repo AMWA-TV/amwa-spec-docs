@@ -167,7 +167,9 @@ jobs:
           python "${TOOLKIT_DIR}/scripts/render-spec-json.py"
 
       - name: Generate global search manifest
-        run: python "${TOOLKIT_DIR}/scripts/render-search-index.py"
+        run: |
+          python "${TOOLKIT_DIR}/scripts/render-search-index.py"
+          test -s site/global-search.json
 
       - name: Install lychee
         run: sudo snap install lychee
@@ -254,6 +256,14 @@ jobs:
             # Rebuild versions previously published with the temporary
             # fallback so their title, badges, and repository link are updated.
             latest_needs_build=true
+          elif ! git cat-file -e "origin/gh-pages:${latest_version}/spec.json"; then
+            # Populate metadata for version trees created before the shared
+            # metadata step was introduced.
+            latest_needs_build=true
+          elif ! git cat-file -e "origin/gh-pages:${latest_version}/global-search.json"; then
+            # Populate the static search manifest for version trees created
+            # before global search was introduced.
+            latest_needs_build=true
           fi
 
           if [[ "${latest_needs_build}" == "true" ]]; then
@@ -271,6 +281,7 @@ jobs:
               fi
               python "${TOOLKIT_DIR}/scripts/render-spec-json.py"
               python "${TOOLKIT_DIR}/scripts/render-search-index.py"
+              test -s site/global-search.json
               mike deploy --push "${latest_version}"
             )
             git worktree remove --force "${latest_workspace}"
@@ -322,6 +333,7 @@ jobs:
               fi
               python "${TOOLKIT_DIR}/scripts/render-spec-json.py"
               python "${TOOLKIT_DIR}/scripts/render-search-index.py"
+              test -s site/global-search.json
               mike deploy --push "${ref_name}"
             )
             git worktree remove --force "${workspace}"
@@ -342,6 +354,7 @@ jobs:
           if [[ -f site/latest/global-search.json ]]; then
             cp site/latest/global-search.json site/global-search.json
           fi
+          test -s site/latest/global-search.json
           # Use a static redirect rather than .htaccess; server-level Apache
           # rules already apply to the AMWA documentation tree. Use an
           # absolute path so the redirect also works when the request omits

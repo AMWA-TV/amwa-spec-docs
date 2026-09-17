@@ -41,7 +41,11 @@ def read_title(path):
     for line in path.read_text(encoding="utf-8").splitlines():
         match = re.match(r"^#\s+(.+?)\s*$", line)
         if match:
-            return match.group(1)
+            # README titles are Markdown, but site_name is rendered as plain
+            # text in the title bar. Remove Markdown backslash escapes so
+            # titles such as "\\[Work In Progress\\]" do not expose the
+            # backslashes in the generated site chrome.
+            return re.sub(r"\\(.)", r"\1", match.group(1))
     return None
 
 
