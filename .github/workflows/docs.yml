@@ -156,20 +156,15 @@ jobs:
               ;;
           esac
 
-      - name: Build documentation
-        run: zensical build --clean
-
-      - name: Publish spec metadata
+      - name: Ensure spec metadata source
         run: |
           if [[ ! -f spec.yml && -n "${METADATA_DIR:-}" && -f "${METADATA_DIR}/spec.yml" ]]; then
             cp "${METADATA_DIR}/spec.yml" spec.yml
           fi
-          python "${TOOLKIT_DIR}/scripts/render-spec-json.py"
 
-      - name: Generate global search manifest
-        run: |
-          python "${TOOLKIT_DIR}/scripts/render-search-index.py"
-          test -s site/global-search.json
+      - name: Build documentation
+        run: zensical build --clean
+
 
       - name: Install lychee
         run: sudo snap install lychee
@@ -195,13 +190,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [[ "${VERSIONED}" != "true" ]]; then
-            mike deploy --push latest
+            python "${TOOLKIT_DIR}/scripts/mike-deploy.py" latest --toolkit-dir "${TOOLKIT_DIR}" --push
             exit 0
           fi
 
           # Every versioned build is stored first. This also makes a release
           # event available for the latest-alias calculation below.
-          mike deploy --push "${BUILD_REF}"
+          python "${TOOLKIT_DIR}/scripts/mike-deploy.py" "${BUILD_REF}" --toolkit-dir "${TOOLKIT_DIR}" --push
 
           latest_version="$(
             gh release list \
@@ -275,14 +270,10 @@ jobs:
               export BUILD_REF="${latest_version}"
               export TOOLKIT_DIR="${GITHUB_WORKSPACE}/${TOOLKIT_DIR}"
               bash "${TOOLKIT_DIR}/scripts/prepare-docs.sh"
-              zensical build --clean
               if [[ ! -f spec.yml && -n "${METADATA_DIR:-}" && -f "${METADATA_DIR}/spec.yml" ]]; then
                 cp "${METADATA_DIR}/spec.yml" spec.yml
               fi
-              python "${TOOLKIT_DIR}/scripts/render-spec-json.py"
-              python "${TOOLKIT_DIR}/scripts/render-search-index.py"
-              test -s site/global-search.json
-              mike deploy --push "${latest_version}"
+              python "${TOOLKIT_DIR}/scripts/mike-deploy.py" "${latest_version}" --toolkit-dir "${TOOLKIT_DIR}" --push
             )
             git worktree remove --force "${latest_workspace}"
             git fetch origin gh-pages --depth=1
@@ -327,14 +318,10 @@ jobs:
               export BUILD_REF="${ref_name}"
               export TOOLKIT_DIR="${GITHUB_WORKSPACE}/${TOOLKIT_DIR}"
               bash "${TOOLKIT_DIR}/scripts/prepare-docs.sh"
-              zensical build --clean
               if [[ ! -f spec.yml && -n "${METADATA_DIR:-}" && -f "${METADATA_DIR}/spec.yml" ]]; then
                 cp "${METADATA_DIR}/spec.yml" spec.yml
               fi
-              python "${TOOLKIT_DIR}/scripts/render-spec-json.py"
-              python "${TOOLKIT_DIR}/scripts/render-search-index.py"
-              test -s site/global-search.json
-              mike deploy --push "${ref_name}"
+              python "${TOOLKIT_DIR}/scripts/mike-deploy.py" "${ref_name}" --toolkit-dir "${TOOLKIT_DIR}" --push
             )
             git worktree remove --force "${workspace}"
             git fetch origin gh-pages --depth=1
