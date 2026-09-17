@@ -45,6 +45,14 @@ def main() -> None:
 
     config_file = args.config_file
     config = utils.load_config(config_file)
+    driver.check_remote_status(
+        argparse.Namespace(
+            remote=args.remote,
+            branch=args.branch,
+            ignore_remote_status=False,
+        ),
+        strict=True,
+    )
     with driver.handle_empty_commit():
         with commands.deploy(
             config,
