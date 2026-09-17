@@ -13,18 +13,20 @@ import argparse
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 from mike import commands, driver, git_utils, utils
 
 
 def run_metadata_generators(toolkit_dir: str) -> None:
-    scripts = os.path.abspath(toolkit_dir)
+    toolkit = Path(toolkit_dir).resolve()
+    scripts = toolkit / "scripts"
     subprocess.run(
-        [sys.executable, os.path.join(scripts, "render-spec-json.py")],
+        [sys.executable, str(scripts / "render-spec-json.py")],
         check=True,
     )
     subprocess.run(
-        [sys.executable, os.path.join(scripts, "render-search-index.py")],
+        [sys.executable, str(scripts / "render-search-index.py")],
         check=True,
     )
     if not os.path.isfile("site/global-search.json"):
