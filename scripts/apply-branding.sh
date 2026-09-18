@@ -37,7 +37,7 @@ if repo_name.startswith("in-"):
             "href": "https://specs.amwa.tv/in-index",
         }
     )
-elif repo_name.startswith(("is-", "ms-", "bcp-", "info-")):
+elif repo_name == "nmos" or repo_name.startswith(("is-", "ms-", "bcp-", "info-")):
     asset_names.append("NMOS-logo.png")
     logo_specs.append(
         {
@@ -220,6 +220,12 @@ else:
     def add_yaml_list(section_text, key, value):
         if re.search(rf"(?m)^\s*-\s*{re.escape(value)}\s*$", section_text):
             return section_text
+        match = re.search(
+            rf"(?m)^{re.escape(key)}:[ \t]*\n(?P<items>(?:[ \t]+-[^\n]*\n)*)",
+            section_text,
+        )
+        if match:
+            return section_text[:match.end()] + f"  - {value}\n" + section_text[match.end():]
         return section_text.rstrip() + f"\n{key}:\n  - {value}\n"
 
     text = add_yaml_list(text, "extra_css", "stylesheets/amwa-branding.css")
