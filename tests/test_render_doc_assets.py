@@ -1,5 +1,6 @@
 import importlib.util
 from pathlib import Path
+from tempfile import TemporaryDirectory
 import unittest
 
 
@@ -29,6 +30,21 @@ class JsonRenderingTests(unittest.TestCase):
         self.assertIn('data-source-action="collapse"', rendered)
         self.assertIn('class="source-editor"', rendered)
         self.assertIn('aria-label="Foldable JSON source"', rendered)
+
+
+class RamlRenderingTests(unittest.TestCase):
+    def test_legacy_raml_is_published_as_source(self):
+        with TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory) / "NodeAPI.raml"
+            source.write_text("#%RAML 0.8\n\ntitle: Node\n", encoding="utf-8")
+
+            version = MODULE.raml_version(source)
+            rendered = MODULE.raw_raml_page(source, Path("NodeAPI.raml"), version)
+
+        self.assertEqual(version, "0.8")
+        self.assertIn("not supported by the shared HTML renderer", rendered)
+        self.assertIn("```raml", rendered)
+        self.assertIn("title: Node", rendered)
 
 
 if __name__ == "__main__":

@@ -485,6 +485,33 @@ def raml_overview(path: Path) -> str:
     return ""
 
 
+def raml_version(path: Path) -> str:
+    """Return the RAML version from the file header, if present."""
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.removeprefix("\ufeff").strip()
+        if not line:
+            continue
+        match = re.fullmatch(r"#%RAML\s+(.+)", line, re.IGNORECASE)
+        return match.group(1).strip() if match else ""
+    return ""
+
+
+def raw_raml_page(path: Path, relative: Path, version: str) -> str:
+    """Create a readable source page for RAML versions the HTML tool cannot render."""
+    source = path.read_text(encoding="utf-8").rstrip()
+    longest_fence = max(
+        (len(match.group(0)) for match in re.finditer(r"`+", source)),
+        default=0,
+    )
+    fence = "`" * max(3, longest_fence + 1)
+    return (
+        f"# {relative.stem}\n\n"
+        f"This API definition uses RAML {version}, which is not supported by the "
+        "shared HTML renderer. The source is shown below.\n\n"
+        f"{fence}raml\n{source}\n{fence}\n"
+    )
+
+
 def render_apis() -> None:
     if not API_SOURCE.is_dir():
         return
@@ -500,6 +527,15 @@ def render_apis() -> None:
         output = API_DOCS / relative.with_suffix(".html")
         output_md = output.with_suffix(".md")
         output.parent.mkdir(parents=True, exist_ok=True)
+        version = raml_version(raml_path)
+        if version and version != "1.0":
+            print(
+                f"Warning: {raml_path} uses RAML {version}; publishing its source "
+                "instead of rendered HTML"
+            )
+            write(output_md, raw_raml_page(raml_path, relative, version))
+            entries.append((relative.with_suffix(".md").as_posix(), relative.stem))
+            continue
         if not renderer:
             raise RuntimeError(
                 "RAML files were found but RAML2HTML_BIN is not set; "
