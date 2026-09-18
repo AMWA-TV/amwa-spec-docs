@@ -48,12 +48,14 @@ def parse_navigation() -> list[tuple[str, list[dict[str, object]]]]:
             stack = [(-1, current[1])]
             continue
 
-        if current is None:
-            continue
-
         match = _LINK.match(line)
         if not match:
             continue
+
+        if current is None:
+            current = ("Documentation", [])
+            sections.append(current)
+            stack = [(-1, current[1])]
 
         indent = len(match.group("indent"))
         path = target_path(match.group("target"))

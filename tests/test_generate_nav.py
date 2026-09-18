@@ -175,6 +175,23 @@ site_url = "https://example.test/"
                 },
             )
 
+    def test_accepts_unheaded_document_links(self):
+        self.write(
+            "docs/README.md",
+            """<!-- Navigation notes -->
+
+- [Document](Document.md)
+""",
+        )
+        self.write("docs/Document.md")
+
+        sections = MODULE.parse_navigation()
+
+        self.assertEqual(
+            sections,
+            [("Documentation", [{"label": "Document", "path": "Document.md", "children": []}])],
+        )
+
     def test_skips_missing_targets_and_keeps_external_targets(self):
         self.write(
             "docs/README.md",
