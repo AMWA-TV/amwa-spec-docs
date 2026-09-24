@@ -399,12 +399,27 @@ def render_schemas() -> None:
         # template adds them.
         raw_json = SCHEMA_DOCS / relative
         raw_md = raw_json.with_suffix(".md")
-        raw_value = load_json(schema_path)
         raw_json.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(schema_path, raw_json)
-        resolved_value = resolve_reference(raw_value, source)
-
         raw_entries.append((relative.with_suffix(".md").as_posix(), relative.stem))
+
+        try:
+            raw_value = load_json(schema_path)
+        except json.JSONDecodeError as exc:
+            # Preserve malformed schemas from historical refs as source pages.
+            # They should not prevent the rest of an otherwise renderable
+            # specification, including its search manifest, from publishing.
+            raw_source = schema_path.read_text(encoding="utf-8").rstrip()
+            write(
+                raw_md,
+                f"# {relative.stem}\n\n"
+                f"!!! warning\n    This historical schema is not valid JSON: {exc}\n\n"
+                f"```json\n{raw_source}\n```\n",
+            )
+            print(f"warning: skipping resolved rendering for invalid schema {schema_path}: {exc}")
+            continue
+
+        resolved_value = resolve_reference(raw_value, source)
         resolved_json = resolved_dir / relative
         resolved_json.parent.mkdir(parents=True, exist_ok=True)
         resolved_json.write_text(json.dumps(resolved_value, indent=2) + "\n", encoding="utf-8")
