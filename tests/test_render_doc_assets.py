@@ -46,6 +46,29 @@ class RamlRenderingTests(unittest.TestCase):
         self.assertIn("```raml", rendered)
         self.assertIn("title: Node", rendered)
 
+    def test_api_index_avoids_legacy_api_overview_collision(self):
+        with TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            api_source = root / "APIs"
+            docs = root / "docs"
+            api_docs = docs / "APIs"
+            api_source.mkdir()
+            api_docs.mkdir(parents=True)
+            (docs / "APIs.md").write_text("# API overview\n", encoding="utf-8")
+            (api_source / "NodeAPI.raml").write_text(
+                "#%RAML 0.8\n\ntitle: Node\n", encoding="utf-8"
+            )
+
+            original = MODULE.API_SOURCE, MODULE.DOCS, MODULE.API_DOCS
+            MODULE.API_SOURCE, MODULE.DOCS, MODULE.API_DOCS = api_source, docs, api_docs
+            try:
+                MODULE.render_apis()
+            finally:
+                MODULE.API_SOURCE, MODULE.DOCS, MODULE.API_DOCS = original
+
+            self.assertTrue((api_docs / "definitions.md").is_file())
+            self.assertFalse((api_docs / "index.md").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

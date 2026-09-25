@@ -373,7 +373,13 @@ def resolve_reference(value: Any, schema_dir: Path, stack: tuple[str, ...] = ())
         if target.exists() and target.is_file():
             key = str(target)
             if key not in stack:
-                target_value = load_json(target)
+                try:
+                    target_value = load_json(target)
+                except json.JSONDecodeError as exc:
+                    # Keep an unresolved reference when a historical target is
+                    # malformed; the raw source page remains available.
+                    print(f"warning: leaving malformed schema reference unresolved {target}: {exc}")
+                    return value
                 if fragment:
                     for part in fragment.lstrip("/").split("/"):
                         target_value = target_value[part.replace("~1", "/").replace("~0", "~")]
@@ -574,7 +580,12 @@ def render_apis() -> None:
     lines = ["# APIs", ""]
     for relative, title in entries:
         lines.append(f"- [{title}]({relative})")
-    write(API_DOCS / "index.md", "\n".join(lines) + "\n")
+
+    # A legacy docs/APIs.md page maps to the same destination as
+    # docs/APIs/index.md in Zensical. Keep both the normative overview and the
+    # generated asset list by giving the latter a distinct destination.
+    index_name = "definitions.md" if (DOCS / "APIs.md").is_file() else "index.md"
+    write(API_DOCS / index_name, "\n".join(lines) + "\n")
 
 
 def main() -> None:

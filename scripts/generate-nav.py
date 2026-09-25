@@ -81,13 +81,21 @@ def parse_navigation() -> list[tuple[str, list[dict[str, object]]]]:
     return sections
 
 
-def generated_navigation() -> list[tuple[str, str, list[dict[str, object]]]]:
+def generated_navigation() -> list[tuple[str, str, list[object]]]:
     """Read the indexes generated for root-level API and example assets."""
-    generated: list[tuple[str, str, list[dict[str, object]]]] = []
+    generated: list[tuple[str, str, list[object]]] = []
     for directory, display_title in _GENERATED_TREES:
-        index = DOCS / directory / "index.md"
-        if not index.is_file():
+        index_name = next(
+            (
+                candidate
+                for candidate in ("index.md", "definitions.md")
+                if (DOCS / directory / candidate).is_file()
+            ),
+            None,
+        )
+        if index_name is None:
             continue
+        index = DOCS / directory / index_name
 
         nodes: list[dict[str, object]] = []
         for line in index.read_text(encoding="utf-8").splitlines():
@@ -106,7 +114,7 @@ def generated_navigation() -> list[tuple[str, str, list[dict[str, object]]]]:
                 continue
             nodes.append({"label": match.group("label"), "path": f"{directory}/{path}", "children": []})
 
-        generated.append((directory, display_title, nodes))
+        generated.append((directory, display_title, [index_name, *nodes]))
     return generated
 
 
@@ -115,8 +123,11 @@ def add_generated_navigation(
 ) -> None:
     """Keep generated asset trees visible when explicit navigation is used."""
     for directory, title, nodes in generated_navigation():
-        index_path = f"{directory}/index.md"
-        sections.append((title, [index_path, *nodes]))
+        prefixed = [
+            f"{directory}/{node}" if isinstance(node, str) else node
+            for node in nodes
+        ]
+        sections.append((title, prefixed))
 
 
 def render_node(node: dict[str, object], level: int) -> str:
