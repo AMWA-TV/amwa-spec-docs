@@ -37,7 +37,11 @@ if repo_name.startswith("in-"):
             "href": "https://specs.amwa.tv/in-index",
         }
     )
-elif repo_name == "nmos" or repo_name.startswith(("is-", "ms-", "bcp-", "info-")):
+elif (
+    repo_name == "nmos"
+    or repo_name in {"nmos-parameter-registers", "nmos-control-feature-sets"}
+    or repo_name.startswith(("is-", "ms-", "bcp-", "info-"))
+):
     asset_names.append("NMOS-logo.png")
     logo_specs.append(
         {
