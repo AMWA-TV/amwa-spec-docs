@@ -162,6 +162,45 @@ modified. Set `PORT`, `VENV_DIR`, or `RAML_DIR` to customize the local tools;
 set `KEEP_RENDER=1` to retain the generated temporary site after stopping the
 server. The preview includes `spec.json` at its site root.
 
+### Validate from a fork or pull request
+
+The repository `docs.yml` workflow is a deployment workflow, not a fork-safe
+pull-request build. It calls this reusable workflow, pushes Mike's `gh-pages`
+branch, and uploads to the AMWA server. Those deployment steps require
+repository write permission and the AMWA server secrets:
+
+- `SSH_USER`
+- `SSH_HOST`
+- `SSH_PRIVATE_KEY`
+- `SSH_KNOWN_HOSTS`
+
+Do not copy AMWA deployment secrets into a personal fork. To check the build
+before opening a pull request, use the local preview helper instead. From the
+documentation repository, with this toolkit checked out as a sibling:
+
+```sh
+git clone https://github.com/AMWA-TV/amwa-spec-docs.git ../amwa-spec-docs
+../amwa-spec-docs/scripts/local-render.sh
+```
+
+The helper creates a temporary virtual environment, installs Zensical and
+PyYAML, installs the RAML renderer with npm when required, runs
+`prepare-docs.sh`, builds with `zensical build --clean`, and serves the result
+locally. It requires Python 3.10 or newer, Node.js/npm when the repository has
+RAML files, `rsync`, and network access for the initial dependency installs.
+It does not modify the documentation working tree or push anything.
+
+A fork that wants a GitHub Actions build should create a separate build-only
+workflow which checks out the fork and toolkit, runs the preparation/build
+steps, and omits Mike deployment, `gh-pages` pushes, and the AMWA server upload.
+A normal fork cannot faithfully test the deployment portion because its
+`GITHUB_TOKEN` and secrets do not have access to the AMWA publishing target.
+
+For the local build, the caller repository should provide `README.md`,
+`docs/`, and a valid `zensical.toml`; repositories containing RAML or JSON
+sources should retain their expected `APIs/`, `examples/`, or `manifest/`
+inputs. The build should be run from the caller repository root.
+
 For a build without starting a server:
 
 ```sh
