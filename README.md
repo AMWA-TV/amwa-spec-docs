@@ -104,11 +104,12 @@ this supports migrating repositories that already have historical releases.
 | `source-ref` | no | triggering ref | Build a selected branch/tag, useful for manual rebuilds |
 | `toolkit-ref` | no | `main` | Shared toolkit ref; pin a release tag or SHA for production |
 | `rebuild-all` | no | `false` | Manual recovery/migration mode: rebuild all matching refs into Mike's `gh-pages` tree |
+| `publish` | no | `true` | Push `gh-pages` and upload to the AMWA server; set `false` for fork/PR build-only validation |
 | `release-pattern` | no | SemVer tags | Regex used by `rebuild-all` to select release tags |
 | `branch-pattern` | no | Version branches and `publish-*` | Regex used by `rebuild-all` to select branches |
 
-The caller repository must give the reusable workflow `contents: write`, and
-must provide or inherit these secrets:
+The caller repository must give the reusable workflow `contents: write` when
+`publish` is true, and must provide or inherit these secrets when publishing:
 
 - `SSH_USER`
 - `SSH_HOST`
@@ -190,11 +191,38 @@ locally. It requires Python 3.10 or newer, Node.js/npm when the repository has
 RAML files, `rsync`, and network access for the initial dependency installs.
 It does not modify the documentation working tree or push anything.
 
-A fork that wants a GitHub Actions build should create a separate build-only
-workflow which checks out the fork and toolkit, runs the preparation/build
-steps, and omits Mike deployment, `gh-pages` pushes, and the AMWA server upload.
-A normal fork cannot faithfully test the deployment portion because its
-`GITHUB_TOKEN` and secrets do not have access to the AMWA publishing target.
+A fork can run the same build in GitHub Actions. The reusable workflow now
+also disables publishing automatically for fork events and all pull requests,
+even if the caller omits `publish: false`. Setting `publish: false` explicitly
+is still recommended for a fork-only workflow as an extra safeguard. For
+example, a fork-only PR workflow can contain:
+
+```yaml
+name: Documentation build
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    uses: AMWA-TV/amwa-spec-docs/.github/workflows/docs.yml@main
+    with:
+      versioned: false
+      publish: false
+      site-name: is-template
+      public-docs-root: https://example.invalid/is-template
+```
+
+This runs checkout, metadata preparation, branding checks, RAML rendering,
+Zensical, and the link check, but skips Mike deployment, `gh-pages` pushes, and
+the AMWA server upload. Publishing is allowed only when `publish` is true,
+the event is not a pull request, and the repository is not marked as a fork. A
+normal fork cannot faithfully test the deployment
+portion because its `GITHUB_TOKEN` and secrets do not have access to the AMWA
+publishing target.
 
 For the local build, the caller repository should provide `README.md`,
 `docs/`, and a valid `zensical.toml`; repositories containing RAML or JSON

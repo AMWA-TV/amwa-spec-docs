@@ -33,6 +33,11 @@ on:
         required: false
         type: boolean
         default: false
+      publish:
+        description: Push gh-pages and upload the built site to the AMWA server
+        required: false
+        type: boolean
+        default: true
       release-pattern:
         description: Regex for release tags to include when rebuilding all trees
         required: false
@@ -45,13 +50,13 @@ on:
         default: '^v[0-9]+\.[0-9]+-dev$|^v[0-9]+\.[0-9]+\.x$|^publish-'
     secrets:
       SSH_USER:
-        required: true
+        required: false
       SSH_HOST:
-        required: true
+        required: false
       SSH_PRIVATE_KEY:
-        required: true
+        required: false
       SSH_KNOWN_HOSTS:
-        required: true
+        required: false
 
 permissions:
   contents: write
@@ -62,6 +67,7 @@ jobs:
     env:
       SPEC_SERVER: specs.amwa.tv
       SITE_NAME: ${{ inputs['site-name'] || github.event.repository.name }}
+      PUBLISH_ALLOWED: ${{ inputs.publish && github.event_name != 'pull_request' && github.event.repository.fork != true }}
       PUBLIC_DOCS_ROOT: ${{ inputs['public-docs-root'] || format('https://specs.amwa.tv/new/{0}', github.event.repository.name) }}
       VERSIONED: ${{ inputs.versioned }}
       RELEASE_PATTERN: ${{ inputs['release-pattern'] }}
@@ -118,6 +124,7 @@ jobs:
           echo "METADATA_DIR=${metadata_dir}" >> "$GITHUB_ENV"
 
       - name: Fetch gh-pages branch
+        if: env.PUBLISH_ALLOWED == 'true'
         run: git fetch origin gh-pages --depth=1 || true
 
       - name: Set up Python
@@ -181,11 +188,13 @@ jobs:
           --exclude 'httpstatus\.es'
 
       - name: Configure git for Mike
+        if: env.PUBLISH_ALLOWED == 'true'
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
 
       - name: Deploy documentation with Mike
+        if: env.PUBLISH_ALLOWED == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -283,7 +292,7 @@ jobs:
           mike alias --push --update-aliases "${latest_version}" latest
 
       - name: Rebuild all matching version trees
-        if: inputs.versioned && inputs['rebuild-all']
+        if: env.PUBLISH_ALLOWED == 'true' && inputs.versioned && inputs['rebuild-all']
         run: |
           git fetch origin --tags --prune
           git fetch origin gh-pages --depth=1 || true
@@ -328,6 +337,7 @@ jobs:
           done < "${RUNNER_TEMP}/version-refs.tsv"
 
       - name: Export the updated Mike site
+        if: env.PUBLISH_ALLOWED == 'true'
         run: |
           rm -rf site
           mkdir site
@@ -362,7 +372,21 @@ jobs:
           </html>
           EOF
 
+      - name: Verify publishing secrets
+        if: env.PUBLISH_ALLOWED == 'true'
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          test -n "${SSH_USER}"
+          test -n "${SSH_HOST}"
+          test -n "${SSH_PRIVATE_KEY}"
+          test -n "${SSH_KNOWN_HOSTS}"
+
       - name: Upload site to AMWA web server
+        if: env.PUBLISH_ALLOWED == 'true'
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
