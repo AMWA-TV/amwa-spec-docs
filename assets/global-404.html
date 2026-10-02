@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Page not found | AMWA specifications</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --amwa-primary: #418ab3;
+      --amwa-primary-light: #a5cadf;
+      --amwa-primary-background: #d1e4ef;
+      --amwa-background: #fff;
+      --amwa-text: #263238;
+      --amwa-muted: #607d8b;
+      --amwa-border: #d9e0e5;
+      --amwa-link: #418ab3;
+      --amwa-shadow: 0 2px 8px rgba(38, 50, 56, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      min-height: 100%;
+      background: var(--amwa-background);
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--amwa-text);
+      background: var(--amwa-background);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+    }
+
+    .header {
+      color: var(--amwa-primary-background);
+      background: var(--amwa-primary);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18);
+    }
+
+    .header-inner,
+    .content,
+    .footer {
+      width: min(1100px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      min-height: 56px;
+      padding: 0.75rem 0;
+    }
+
+    .branding {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      min-width: 0;
+      color: var(--amwa-primary-background);
+    }
+
+    .branding img {
+      display: block;
+      width: auto;
+      height: 1.55rem;
+      object-fit: contain;
+    }
+
+    .branding a + a {
+      display: flex;
+      align-items: center;
+      padding-left: 0.45rem;
+      border-left: 1px solid rgba(209, 228, 239, 0.7);
+    }
+
+    .branding-title {
+      font-size: 1rem;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+    }
+
+    .header-link {
+      margin-left: auto;
+      color: var(--amwa-primary-background);
+      font-size: 0.85rem;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .header-link:hover,
+    .header-link:focus {
+      color: #fff;
+      text-decoration: underline;
+    }
+
+    .content {
+      padding: 72px 0 88px;
+    }
+
+    .error-card {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 44px 48px 48px;
+      background: #fff;
+      border: 1px solid var(--amwa-border);
+      border-radius: 4px;
+      box-shadow: var(--amwa-shadow);
+      text-align: center;
+    }
+
+    .error-code {
+      margin: 0;
+      color: var(--amwa-primary);
+      font-size: clamp(4rem, 12vw, 7rem);
+      font-weight: 300;
+      line-height: 1;
+      letter-spacing: 0.04em;
+    }
+
+    h1 {
+      margin: 22px 0 10px;
+      color: var(--amwa-text);
+      font-size: clamp(1.6rem, 4vw, 2.2rem);
+      font-weight: 400;
+      line-height: 1.25;
+    }
+
+    p {
+      margin: 0 auto 24px;
+      color: var(--amwa-muted);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 30px;
+    }
+
+    .button {
+      display: inline-block;
+      padding: 9px 18px;
+      border: 1px solid var(--amwa-link);
+      border-radius: 3px;
+      color: var(--amwa-link);
+      font-size: 0.9rem;
+      text-decoration: none;
+      transition: background 120ms ease, color 120ms ease;
+    }
+
+    .button.primary {
+      color: #fff;
+      background: var(--amwa-primary);
+    }
+
+    .button:hover,
+    .button:focus {
+      color: #fff;
+      background: var(--amwa-primary);
+      border-color: var(--amwa-primary);
+    }
+
+    .footer {
+      padding: 20px 0 28px;
+      border-top: 1px solid var(--amwa-border);
+      color: var(--amwa-muted);
+      font-size: 0.8rem;
+      text-align: center;
+    }
+
+    .footer a {
+      color: var(--amwa-link);
+    }
+
+    @media (max-width: 600px) {
+      .header-inner {
+        min-height: 48px;
+      }
+
+      .branding img {
+        height: 1.25rem;
+      }
+
+      .branding-title,
+      .header-link {
+        display: none;
+      }
+
+      .content {
+        padding: 40px 0 56px;
+      }
+
+      .error-card {
+        padding: 32px 22px 36px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="branding" aria-label="AMWA branding">
+        <a href="https://www.amwa.tv/" aria-label="AMWA website">
+          <img src="/new/nmos/images/AMWA-logo.png" alt="AMWA">
+        </a>
+        <a href="/new/nmos/" aria-label="NMOS documentation index">
+          <img src="/new/nmos/images/NMOS-logo.png" alt="NMOS">
+        </a>
+        <span class="branding-title">AMWA Specifications</span>
+      </div>
+      <a class="header-link" href="/new/nmos/">NMOS documentation</a>
+    </div>
+  </header>
+
+  <main class="content">
+    <section class="error-card" aria-labelledby="page-title">
+      <p class="error-code" aria-hidden="true">404</p>
+      <h1 id="page-title">Page not found</h1>
+      <p>The page you requested could not be found.</p>
+      <nav class="actions" aria-label="Page navigation">
+        <a class="button primary" href="/new/nmos/">NMOS documentation index</a>
+        <a class="button" href="/nmos">Legacy NMOS pages</a>
+        <a class="button" href="https://www.amwa.tv/">AMWA website</a>
+      </nav>
+    </section>
+  </main>
+
+  <footer class="footer">
+    AMWA Specifications · <a href="https://www.amwa.tv/">Advanced Media Workflow Association</a>
+  </footer>
+</body>
+</html>
