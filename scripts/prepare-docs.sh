@@ -113,6 +113,67 @@ if [[ ! -f README.md ]]; then
     exit 1
 fi
 
+# Zensical emits docs/404.md as a static site/404.html. Supply a shared
+# source marker and override its template so unknown paths stay within the
+# Zensical render rather than being handled by the legacy server site. Preserve
+# repository-specific 404 sources and theme overrides.
+python3 - "${TOOLKIT_DIR}/assets/404.md" "${TOOLKIT_DIR}/assets/404.html" "${PUBLIC_DOCS_ROOT%/}" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+marker_source = Path(sys.argv[1])
+template_source = Path(sys.argv[2])
+root = sys.argv[3]
+
+if not Path("docs/404.md").is_file():
+    content = marker_source.read_text(encoding="utf-8").replace(
+        "__PUBLIC_DOCS_ROOT__", root
+    )
+    Path("docs/404.md").write_text(content, encoding="utf-8")
+    print("Staged shared Zensical 404 source marker")
+
+config = Path("zensical.toml")
+if not config.is_file():
+    raise SystemExit("error: zensical.toml is required for the shared 404 template")
+
+text = config.read_text(encoding="utf-8")
+theme = re.search(r"(?ms)^\[project\.theme\]\n(?P<body>.*?)(?=^\[|\Z)", text)
+custom_dir = None
+if theme:
+    match = re.search(
+        r'''(?m)^[ \t]*custom_dir[ \t]*=[ \t]*["']([^"']+)["']\s*$''',
+        theme.group("body"),
+    )
+    if match:
+        custom_dir = Path(match.group(1))
+
+if custom_dir is None:
+    custom_dir = Path("overrides")
+    if theme:
+        body = theme.group("body")
+        commented = re.search(r"(?m)^#\s*custom_dir\s*=.*$", body)
+        if commented:
+            body = body[: commented.start()] + 'custom_dir = "overrides"' + body[commented.end() :]
+        else:
+            body = body.rstrip() + '\ncustom_dir = "overrides"\n'
+        text = text[: theme.start("body")] + body + text[theme.end("body") :]
+    else:
+        text = text.rstrip() + '\n\n[project.theme]\ncustom_dir = "overrides"\n'
+    config.write_text(text, encoding="utf-8")
+
+template = custom_dir / "404.html"
+if not template.is_file():
+    template.parent.mkdir(parents=True, exist_ok=True)
+    template.write_text(
+        template_source.read_text(encoding="utf-8").replace(
+            "__PUBLIC_DOCS_ROOT__", root
+        ),
+        encoding="utf-8",
+    )
+    print(f"Staged shared Zensical 404 template in {custom_dir}")
+PY
+
 # Zensical builds from docs/, while these optional source directories live at
 # repository root. Stage them into the temporary docs tree for the site build.
 for directory in APIs examples manifest; do
