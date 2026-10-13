@@ -102,18 +102,40 @@ else:
         config.write_text(updated, encoding="utf-8")
 
 # Keep the historical README body, but use the current metadata header so
-# published versions have the same title, badges, and repository link.
+# published versions have the same title, badges, and introductory sections.
+# Older refs may not have the INTRO markers yet, so insert the current intro
+# before their first second-level section in that case.
 if metadata_readme.is_file() and readme.is_file():
     marker = "<!-- INTRO-START -->"
+    marker_end = "<!-- INTRO-END -->"
     metadata_text = metadata_readme.read_text(encoding="utf-8")
     historical_text = readme.read_text(encoding="utf-8")
-    if marker in metadata_text and marker in historical_text:
+    if marker in metadata_text:
         metadata_header = metadata_text.split(marker, 1)[0].rstrip()
-        historical_body = historical_text.split(marker, 1)[1]
-        readme.write_text(
-            f"{metadata_header}\n\n{marker}{historical_body}",
-            encoding="utf-8",
-        )
+        metadata_intro_end = metadata_text.find(marker_end, metadata_text.find(marker))
+        if metadata_intro_end >= 0:
+            metadata_intro = metadata_text[
+                metadata_text.find(marker) : metadata_intro_end + len(marker_end)
+            ].strip()
+        else:
+            metadata_intro = metadata_text.split(marker, 1)[1].strip()
+
+        if marker in historical_text:
+            historical_body = historical_text.split(marker, 1)[1]
+            readme.write_text(
+                f"{metadata_header}\n\n{marker}{historical_body}",
+                encoding="utf-8",
+            )
+        else:
+            historical_section = re.search(r"(?m)^##\s+", historical_text)
+            if historical_section:
+                historical_body = historical_text[historical_section.start() :].strip()
+            else:
+                historical_body = historical_text.split("\n", 1)[1].strip()
+            readme.write_text(
+                f"{metadata_header}\n\n{metadata_intro}\n\n{historical_body}\n",
+                encoding="utf-8",
+            )
 PY
 
 # Stage the shared AMWA branding and add it to the Zensical header. The
