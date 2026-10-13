@@ -98,8 +98,10 @@ this supports migrating repositories that already have historical releases.
 
 | Input | Required | Default | Purpose |
 | --- | --- | --- | --- |
-| `site-name` | no | caller repository name | Directory below `/new/` and upload name |
+| `site-name` | no | caller repository name | Site directory name below `upload-prefix` and upload name |
 | `public-docs-root` | yes | — | Unversioned public root used for canonical URLs |
+| `upload-prefix` | no | `new` | Directory below the server document root used for upload; set empty for a canonical site at the server root |
+| `legacy-mapping` | no | empty | Repository-relative CSV of legacy HTML URLs; bridge pages are generated only during deployment |
 | `versioned` | no | `true` | Select versioned or fixed-`latest` Mike behavior |
 | `source-ref` | no | triggering ref | Build a selected branch/tag, useful for manual rebuilds |
 | `toolkit-ref` | no | `main` | Shared toolkit ref; pin a release tag or SHA for production |
@@ -141,6 +143,10 @@ The generated JSON pages use the same foldable source viewer as the YAML
 source pages, with `Folding`/`Raw` views, line numbers, nested folding,
 and `Expand all`/`Collapse all` controls. The generated pages do not add
 separate raw-file links.
+
+If `legacy-mapping` is supplied, the workflow generates static HTML bridge
+pages in the runner's temporary directory and merges them into the upload. The
+bridge pages are not committed to the documentation repository.
 
 Each build also writes `global-search.json` at the site root. It is a compact
 manifest of the built HTML pages, intended for the central NMOS index to merge

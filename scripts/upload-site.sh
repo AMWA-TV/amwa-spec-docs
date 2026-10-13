@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
 # Upload the built Zensical site to the AMWA web server using an atomic
-# replacement under /var/www/$SPEC_SERVER/new/$SITE_NAME.
+# replacement under /var/www/$SPEC_SERVER/$UPLOAD_PREFIX/$SITE_NAME. The
+# default prefix preserves the temporary /new deployment location.
 
 set -o errexit
 
@@ -28,7 +29,21 @@ if [[ ! -d site ]]; then
     exit 1
 fi
 
-dest="/var/www/$SPEC_SERVER/new/$SITE_NAME"
+UPLOAD_PREFIX="${UPLOAD_PREFIX-new}"
+UPLOAD_PREFIX="${UPLOAD_PREFIX#/}"
+UPLOAD_PREFIX="${UPLOAD_PREFIX%/}"
+if [[ "$UPLOAD_PREFIX" == *..* || "$UPLOAD_PREFIX" == *" "* || "$UPLOAD_PREFIX" == */* ]]; then
+    echo "UPLOAD_PREFIX must be a single directory name" >&2
+    exit 1
+fi
+
+if [[ -n "$UPLOAD_PREFIX" ]]; then
+    dest="/var/www/$SPEC_SERVER/$UPLOAD_PREFIX/$SITE_NAME"
+    server_parent="/var/www/$SPEC_SERVER/$UPLOAD_PREFIX"
+else
+    dest="/var/www/$SPEC_SERVER/$SITE_NAME"
+    server_parent="/var/www/$SPEC_SERVER"
+fi
 
 if [[ -e .ssh ]]; then
     echo "Temp .ssh already exists: exiting for safety" >&2
@@ -53,7 +68,7 @@ tar -czf "$tar_file" site
 ssh_options=(-i .ssh/id_rsa -o UserKnownHostsFile=.ssh/known_hosts)
 ssh_target="$SSH_USER@$SSH_HOST"
 
-ssh "${ssh_options[@]}" "$ssh_target" "mkdir -p /var/www/$SPEC_SERVER/new"
+ssh "${ssh_options[@]}" "$ssh_target" "mkdir -p '$server_parent'"
 dest_new=$(ssh "${ssh_options[@]}" "$ssh_target" "mktemp -d $dest.XXXXXX")
 
 if ! scp "${ssh_options[@]}" "$tar_file" "$ssh_target:$dest_new/"; then
@@ -66,4 +81,8 @@ ssh "${ssh_options[@]}" "$ssh_target" \
 ssh "${ssh_options[@]}" "$ssh_target" \
     "if [ -e '$dest' ]; then mv '$dest' '$dest.old'; fi; mv '$dest_new' '$dest'; chmod 775 '$dest'; rm -rf '$dest.old'"
 
-echo "Site is https://$SPEC_SERVER/new/$SITE_NAME"
+if [[ -n "$UPLOAD_PREFIX" ]]; then
+    echo "Site is https://$SPEC_SERVER/$UPLOAD_PREFIX/$SITE_NAME"
+else
+    echo "Site is https://$SPEC_SERVER/$SITE_NAME"
+fi

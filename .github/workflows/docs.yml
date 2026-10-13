@@ -4,12 +4,22 @@ on:
   workflow_call:
     inputs:
       site-name:
-        description: Directory name under /new/ on the AMWA server
+        description: Directory name under the configured upload prefix on the AMWA server
         required: false
         type: string
         default: ''
       public-docs-root:
         description: Public unversioned documentation root, without a trailing slash
+        required: false
+        type: string
+        default: ''
+      upload-prefix:
+        description: Directory prefix under the server document root; empty uploads directly under the server root
+        required: false
+        type: string
+        default: new
+      legacy-mapping:
+        description: Repository-relative CSV containing legacy HTML URL mappings to bridge during upload
         required: false
         type: string
         default: ''
@@ -69,6 +79,8 @@ jobs:
       SITE_NAME: ${{ inputs['site-name'] || github.event.repository.name }}
       PUBLISH_ALLOWED: ${{ inputs.publish && github.event_name != 'pull_request' && github.event.repository.fork != true }}
       PUBLIC_DOCS_ROOT: ${{ inputs['public-docs-root'] || format('https://specs.amwa.tv/new/{0}', github.event.repository.name) }}
+      UPLOAD_PREFIX: ${{ inputs['upload-prefix'] }}
+      LEGACY_MAPPING: ${{ inputs['legacy-mapping'] }}
       VERSIONED: ${{ inputs.versioned }}
       RELEASE_PATTERN: ${{ inputs['release-pattern'] }}
       BRANCH_PATTERN: ${{ inputs['branch-pattern'] }}
@@ -120,6 +132,9 @@ jobs:
           fi
           if git cat-file -e "refs/remotes/origin/${default_branch}:spec.yml"; then
             git show "refs/remotes/origin/${default_branch}:spec.yml" > "${metadata_dir}/spec.yml"
+          fi
+          if [[ -n "${LEGACY_MAPPING}" ]] && git cat-file -e "refs/remotes/origin/${default_branch}:${LEGACY_MAPPING}"; then
+            git show "refs/remotes/origin/${default_branch}:${LEGACY_MAPPING}" > "${metadata_dir}/legacy-mapping.csv"
           fi
           echo "METADATA_DIR=${metadata_dir}" >> "$GITHUB_ENV"
 
@@ -356,7 +371,7 @@ jobs:
           # rules already apply to the AMWA documentation tree. Use an
           # absolute path so the redirect also works when the request omits
           # the trailing slash (for example, /new/in-003).
-          latest_url="/new/${SITE_NAME}/latest/"
+          latest_url="${PUBLIC_DOCS_ROOT%/}/latest/"
           cat > site/index.html <<EOF
           <!doctype html>
           <html lang="en">
@@ -371,6 +386,32 @@ jobs:
           </body>
           </html>
           EOF
+
+      - name: Generate legacy HTML bridge pages
+        if: env.PUBLISH_ALLOWED == 'true' && env.LEGACY_MAPPING != ''
+        run: |
+          mapping_file="${GITHUB_WORKSPACE}/${LEGACY_MAPPING}"
+          if [[ ! -f "${mapping_file}" && -f "${METADATA_DIR}/legacy-mapping.csv" ]]; then
+            mapping_file="${METADATA_DIR}/legacy-mapping.csv"
+          fi
+          test -f "${mapping_file}"
+
+          compat_dir="${RUNNER_TEMP}/legacy-compat"
+          rm -rf "${compat_dir}"
+          python "${TOOLKIT_DIR}/scripts/generate_html_bridges.py" \
+            --csv "${mapping_file}" \
+            --output "${compat_dir}" \
+            --source-prefix "/${SITE_NAME}/" \
+            --target-prefix "${PUBLIC_DOCS_ROOT%/}/"
+
+          mkdir -p site/releases site/branches
+          cp -R "${compat_dir}/releases/." site/releases/
+          cp -R "${compat_dir}/branches/." site/branches/
+
+          if grep -RIl 'specs.amwa.tv/new/' site/releases site/branches; then
+            echo 'Found stale temporary URL in legacy bridge pages' >&2
+            exit 1
+          fi
 
       - name: Verify publishing secrets
         if: env.PUBLISH_ALLOWED == 'true'

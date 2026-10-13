@@ -64,6 +64,7 @@ if not config.is_file():
         "[project]\n"
         f"site_name = {json.dumps(site_name)}\n"
         f"site_url = {json.dumps(site_url)}\n"
+        'not_in_nav = "404.md"\n'
         f"repo_name = {json.dumps(repo_slug)}\n"
         f"repo_url = {json.dumps(repo_url)}\n"
         'extra_css = ["stylesheets/extra.css"]\n'
@@ -85,6 +86,13 @@ else:
         text,
         count=1,
     )
+    if not re.search(r"(?m)^not_in_nav\s*=", updated):
+        updated = re.sub(
+            r"(?m)^\[project\]\s*$",
+            '[project]\nnot_in_nav = "404.md"',
+            updated,
+            count=1,
+        )
     if updated != text:
         config.write_text(updated, encoding="utf-8")
 
