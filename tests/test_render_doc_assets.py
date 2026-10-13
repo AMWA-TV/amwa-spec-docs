@@ -31,6 +31,31 @@ class JsonRenderingTests(unittest.TestCase):
         self.assertIn('class="source-editor"', rendered)
         self.assertIn('aria-label="Foldable JSON source"', rendered)
 
+    def test_malformed_historical_example_is_preserved_as_source(self):
+        with TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            source = root / "examples"
+            output = root / "docs" / "examples"
+            source.mkdir()
+            (source / "old-example.json").write_text(
+                '{"value": 1,}\n', encoding="utf-8"
+            )
+
+            original = MODULE.EXAMPLE_SOURCE, MODULE.EXAMPLE_DOCS
+            MODULE.EXAMPLE_SOURCE, MODULE.EXAMPLE_DOCS = source, output
+            try:
+                MODULE.render_examples()
+            finally:
+                MODULE.EXAMPLE_SOURCE, MODULE.EXAMPLE_DOCS = original
+
+            rendered = (output / "old-example.md").read_text(encoding="utf-8")
+            self.assertIn("not valid JSON", rendered)
+            self.assertIn('{"value": 1,}', rendered)
+            self.assertEqual(
+                (output / "old-example.json").read_text(encoding="utf-8"),
+                '{"value": 1,}\n',
+            )
+
 
 class RamlRenderingTests(unittest.TestCase):
     def test_legacy_raml_is_published_as_source(self):

@@ -462,13 +462,22 @@ def render_examples() -> None:
         relative = example_path.relative_to(EXAMPLE_SOURCE)
         output_json = EXAMPLE_DOCS / relative
         output_md = output_json.with_suffix(".md")
+        output_json.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(example_path, output_json)
         entries.append((relative.with_suffix(".md").as_posix(), relative.name))
-        write(
-            output_md,
-            f"# {relative.name}\n\n"
-            + render_json(load_json(example_path)),
-        )
+        try:
+            rendered = render_json(load_json(example_path))
+        except json.JSONDecodeError as exc:
+            # Preserve malformed examples from historical refs as source pages.
+            # The raw JSON file is copied above, so an old invalid asset remains
+            # available without preventing the rest of the version from building.
+            raw_source = example_path.read_text(encoding="utf-8").rstrip()
+            rendered = (
+                f"!!! warning\n    This historical example is not valid JSON: {exc}\n\n"
+                f"```json\n{raw_source}\n```\n"
+            )
+            print(f"warning: preserving malformed example {example_path}: {exc}")
+        write(output_md, f"# {relative.name}\n\n" + rendered)
 
     lines = ["# Examples", ""]
     for relative, title in entries:
