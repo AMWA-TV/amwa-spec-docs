@@ -69,18 +69,27 @@ def target_for(row: dict[str, str], target_prefix: str | None) -> str:
     new = urlsplit(target_prefix)
     if old.netloc != new.netloc or old.scheme != new.scheme:
         raise ValueError(f"target and target prefix use different origins: {target}")
-    if not old.path.startswith("/new/"):
-        raise ValueError(f"target is outside the expected /new tree: {target}")
 
-    parts = old.path[len("/new/") :].split("/", 1)
-    if not parts[0]:
-        raise ValueError(f"target has no site name below /new/: {target}")
-    suffix = parts[1] if len(parts) == 2 else ""
-    new_path = new.path.rstrip("/")
-    if suffix:
-        new_path += "/" + suffix
+    canonical_root = new.path.rstrip("/")
+    if not canonical_root:
+        raise ValueError(f"target prefix has no canonical site path: {target_prefix}")
+
+    # Accept both inventories created before the site migration (/new/<site>)
+    # and current inventories that already contain the canonical /<site> path.
+    # In either case, publish the bridge target below the canonical prefix.
+    accepted_roots = (canonical_root, f"/new{canonical_root}")
+    for root in accepted_roots:
+        if old.path == root:
+            suffix = ""
+            break
+        if old.path.startswith(root + "/"):
+            suffix = old.path[len(root) + 1 :]
+            break
     else:
-        new_path += "/"
+        roots = " or ".join(f"{root}/" for root in accepted_roots)
+        raise ValueError(f"target is outside the expected {roots} tree: {target}")
+
+    new_path = canonical_root + (f"/{suffix}" if suffix else "/")
     return urlunsplit((new.scheme, new.netloc, new_path, old.query, old.fragment))
 
 
@@ -173,8 +182,8 @@ def main() -> int:
     parser.add_argument(
         "--target-prefix",
         help=(
-            "replace a target under https://specs.amwa.tv/new/<site>/ with "
-            "the supplied canonical prefix, for example "
+            "replace a target under the supplied canonical prefix (or its "
+            "legacy /new/<site>/ equivalent), for example "
             "https://specs.amwa.tv/is-08/"
         ),
     )
