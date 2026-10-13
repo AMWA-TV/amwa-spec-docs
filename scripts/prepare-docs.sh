@@ -14,10 +14,15 @@ REF="${BUILD_REF:-${GITHUB_REF_NAME:-main}}"
 REPO_URL="https://github.com/${REPO_SLUG}/blob/${REF}"
 PUBLIC_DOCS_ROOT="${PUBLIC_DOCS_ROOT:-https://specs.amwa.tv/${REPO_SLUG##*/}}"
 TOOLKIT_DIR="${TOOLKIT_DIR:-.}"
+BUILD_DOCS_ROOT="${BUILD_DOCS_ROOT:-${PUBLIC_DOCS_ROOT}}"
+if [[ "${VERSIONED:-false}" == "true" && -n "${BUILD_REF:-}" ]]; then
+    BUILD_DOCS_ROOT="${PUBLIC_DOCS_ROOT%/}/${BUILD_REF}"
+fi
 
-# Zensical uses site_url for canonical links. Mike appends the published
-# version, so this must remain the unversioned public root.
-python3 - "${PUBLIC_DOCS_ROOT%/}/" <<'PY'
+# Zensical uses site_url when generating canonical and root-relative links.
+# Mike places versioned builds below BUILD_REF, but does not rewrite those
+# links after the build, so versioned builds must use their published path.
+python3 - "${BUILD_DOCS_ROOT%/}/" <<'PY'
 from pathlib import Path
 import json
 import os
@@ -125,7 +130,7 @@ fi
 # source marker and override its template so unknown paths stay within the
 # Zensical render rather than being handled by the legacy server site. Preserve
 # repository-specific 404 sources and theme overrides.
-python3 - "${TOOLKIT_DIR}/assets/404.md" "${TOOLKIT_DIR}/assets/404.html" "${PUBLIC_DOCS_ROOT%/}" <<'PY'
+python3 - "${TOOLKIT_DIR}/assets/404.md" "${TOOLKIT_DIR}/assets/404.html" "${BUILD_DOCS_ROOT%/}" <<'PY'
 from pathlib import Path
 import re
 import sys

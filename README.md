@@ -136,8 +136,10 @@ the current metadata header (title, badges, and repository link) with the
 historical README body. `prepare-docs.sh` runs from the caller repository root. It stages optional
 assets, discovers RAML/JSON files, optionally generates foldable source pages when
 source-viewer assets are present, rewrites source links,
-and sets `site_url` to `public-docs-root`. Mike then appends the version. Do not
-set `site_url` to a versioned path in the source configuration.
+and sets `site_url` to the effective build root. For versioned builds this
+includes `BUILD_REF`, because Mike places the generated files below that path
+without rewriting generated URLs. For non-versioned builds it remains the
+unversioned `public-docs-root`.
 
 The generated JSON pages use the same foldable source viewer as the YAML
 source pages, with `Folding`/`Raw` views, line numbers, nested folding,

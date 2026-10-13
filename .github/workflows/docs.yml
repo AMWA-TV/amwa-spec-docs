@@ -191,14 +191,29 @@ jobs:
       - name: Install lychee
         run: sudo snap install lychee
 
-      # The site is checked before Mike places it below this staging prefix, so
-      # root-relative canonical/assets links are not local files yet.
+      # Mike publishes versioned sites below SITE_NAME/BUILD_REF. Stage the
+      # build at that same path so root-relative links are checked locally,
+      # rather than being mistaken for missing files in the pre-Mike tree.
+      - name: Stage site for link checking
+        run: |
+          LINKCHECK_ROOT="${RUNNER_TEMP}/amwa-linkcheck"
+          if [[ "${VERSIONED}" == "true" && -n "${BUILD_REF}" ]]; then
+            LINKCHECK_PATH="${SITE_NAME}/${BUILD_REF}"
+          else
+            LINKCHECK_PATH="${SITE_NAME}"
+          fi
+          rm -rf "${LINKCHECK_ROOT}"
+          mkdir -p "${LINKCHECK_ROOT}/${LINKCHECK_PATH}"
+          cp -R site/. "${LINKCHECK_ROOT}/${LINKCHECK_PATH}/"
+          echo "LINKCHECK_ROOT=${LINKCHECK_ROOT}" >> "${GITHUB_ENV}"
+          echo "LINKCHECK_PATH=${LINKCHECK_PATH}" >> "${GITHUB_ENV}"
+
       - name: Check for broken links
         continue-on-error: true
         run: >-
-          lychee --root-dir ./site --verbose --no-progress
+          lychee --root-dir "${LINKCHECK_ROOT}" --verbose --no-progress
           --accept '100..=103,200..=299,403'
-          --accept-timeouts './site/**/*.html'
+          --accept-timeouts "${LINKCHECK_ROOT}/${LINKCHECK_PATH}/**/*.html"
           --exclude "new/${SITE_NAME}"
           --exclude 'httpstatus\.es'
 
