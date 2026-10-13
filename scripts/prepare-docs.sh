@@ -110,6 +110,17 @@ if metadata_readme.is_file() and readme.is_file():
     marker_end = "<!-- INTRO-END -->"
     metadata_text = metadata_readme.read_text(encoding="utf-8")
     historical_text = readme.read_text(encoding="utf-8")
+
+    def normalize_legacy_lists(text):
+        # Some historical READMEs put a list directly after a paragraph
+        # ending in a colon. Keep the legacy wording, but give Markdown a
+        # blank line so the list markers are rendered as bullets.
+        return re.sub(
+            r"(?m)^([^\n]+:\n)(?=[ \t]*[*+-][ \t]+)",
+            r"\1\n",
+            text,
+        )
+
     if marker in metadata_text:
         metadata_header = metadata_text.split(marker, 1)[0].rstrip()
         metadata_intro_end = metadata_text.find(marker_end, metadata_text.find(marker))
@@ -121,7 +132,9 @@ if metadata_readme.is_file() and readme.is_file():
             metadata_intro = metadata_text.split(marker, 1)[1].strip()
 
         if marker in historical_text:
-            historical_body = historical_text.split(marker, 1)[1]
+            historical_body = normalize_legacy_lists(
+                historical_text.split(marker, 1)[1]
+            )
             readme.write_text(
                 f"{metadata_header}\n\n{marker}{historical_body}",
                 encoding="utf-8",
@@ -132,6 +145,7 @@ if metadata_readme.is_file() and readme.is_file():
                 historical_body = historical_text[historical_section.start() :].strip()
             else:
                 historical_body = historical_text.split("\n", 1)[1].strip()
+            historical_body = normalize_legacy_lists(historical_body)
             readme.write_text(
                 f"{metadata_header}\n\n{metadata_intro}\n\n{historical_body}\n",
                 encoding="utf-8",
