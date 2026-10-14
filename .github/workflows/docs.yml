@@ -419,6 +419,14 @@ jobs:
             --source-prefix "/${SITE_NAME}/" \
             --target-prefix "${PUBLIC_DOCS_ROOT%/}/"
 
+          # Materialize mapped raw assets from their freshly exported canonical
+          # targets before replacing the legacy HTML pages.
+          python "${TOOLKIT_DIR}/scripts/copy_legacy_assets.py" \
+            --csv "${mapping_file}" \
+            --site site \
+            --source-prefix "/${SITE_NAME}/" \
+            --target-prefix "${PUBLIC_DOCS_ROOT%/}/"
+
           # Replace stale legacy HTML pages, but preserve non-HTML assets such
           # as historical JSON and images that may still be linked directly.
           mkdir -p site/releases site/branches
