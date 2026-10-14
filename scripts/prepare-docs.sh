@@ -225,7 +225,7 @@ PY
 
 # Zensical builds from docs/, while these optional source directories live at
 # repository root. Stage them into the temporary docs tree for the site build.
-for directory in APIs examples manifest; do
+for directory in APIs examples manifest models schemas; do
     if [[ -d "${directory}" ]]; then
         rm -rf "docs/${directory}"
         cp -R "${directory}" "docs/${directory}"

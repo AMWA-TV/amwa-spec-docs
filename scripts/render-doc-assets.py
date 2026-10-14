@@ -22,8 +22,11 @@ from typing import Any
 ROOT = Path.cwd()
 DOCS = ROOT / "docs"
 API_SOURCE = ROOT / "APIs"
+MODEL_SOURCE = ROOT / "models"
+ROOT_SCHEMA_SOURCE = ROOT / "schemas"
 EXAMPLE_SOURCE = ROOT / "examples"
 API_DOCS = DOCS / "APIs"
+MODEL_DOCS = DOCS / "models"
 SCHEMA_DOCS = DOCS / "schemas"
 EXAMPLE_DOCS = DOCS / "examples"
 
@@ -449,6 +452,59 @@ def render_schemas() -> None:
 
 
 
+def render_json_tree(source: Path, destination: Path, title: str) -> None:
+    """Publish a root-level JSON asset tree with raw and readable views."""
+    if not source.is_dir():
+        return
+
+    json_paths = sorted(source.rglob("*.json"))
+    if not json_paths:
+        return
+
+    relative_paths: list[Path] = []
+    for source_path in json_paths:
+        relative = source_path.relative_to(source)
+        relative_paths.append(relative)
+        output_json = destination / relative
+        output_md = output_json.with_suffix(".md")
+        output_json.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_path, output_json)
+        try:
+            rendered = render_json(load_json(source_path))
+        except json.JSONDecodeError as exc:
+            raw_source = source_path.read_text(encoding="utf-8").rstrip()
+            rendered = (
+                f"!!! warning\n    This historical JSON file is not valid JSON: {exc}\n\n"
+                f"```json\n{raw_source}\n```\n"
+            )
+        write(output_md, f"# {relative.stem}\n\n{rendered}")
+
+    directories = {Path(".")} | {relative.parent for relative in relative_paths}
+    for directory in sorted(directories, key=lambda path: (len(path.parts), path.as_posix()), reverse=True):
+        index = destination / directory / "index.md"
+        lines = [f"# {title if directory == Path('.') else directory.name}", ""]
+        children = sorted(
+            child for child in directories
+            if child != directory and child.parent == directory
+        )
+        for child in children:
+            lines.append(f"- [{child.name}]({child.name}/)")
+        for relative in sorted(relative_paths):
+            if relative.parent != directory:
+                continue
+            lines.append(f"- [{relative.stem}]({relative.stem}.md)")
+        write(index, "\n".join(lines) + "\n")
+
+
+def render_root_json_assets() -> None:
+    # Historical MS repositories keep models and schemas at repository root,
+    # outside docs/. Stage them as readable JSON trees while retaining the raw
+    # files at their original canonical paths.
+    render_json_tree(MODEL_SOURCE, MODEL_DOCS, "Models")
+    if not (API_SOURCE / "schemas").is_dir():
+        render_json_tree(ROOT_SCHEMA_SOURCE, SCHEMA_DOCS, "JSON Schemas")
+
+
 def render_examples() -> None:
     if not EXAMPLE_SOURCE.is_dir():
         return
@@ -606,6 +662,7 @@ def main() -> None:
                 readme.unlink()
     render_apis()
     render_schemas()
+    render_root_json_assets()
     render_examples()
     write(DOCS / "stylesheets" / "extra.css", render_json_css())
     write(DOCS / "javascripts" / "json-viewer.js", render_json_js())
