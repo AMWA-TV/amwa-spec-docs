@@ -373,6 +373,10 @@ jobs:
           mkdir site
           git fetch origin gh-pages --depth=1
           git archive origin/gh-pages | tar -x -C site
+          # The compatibility tree is persisted on gh-pages but is not part
+          # of the public canonical site. The bridge step below restores it
+          # when its manifest still matches the current mapping.
+          rm -rf site/.legacy-compat
           # Keep spec.json available at the unversioned site root as it was
           # in the former Jekyll deployment, while documentation uses latest/.
           if [[ -f site/latest/spec.json ]]; then
@@ -412,12 +416,58 @@ jobs:
           test -f "${mapping_file}"
 
           compat_dir="${RUNNER_TEMP}/legacy-compat"
-          rm -rf "${compat_dir}"
-          python "${TOOLKIT_DIR}/scripts/generate_html_bridges.py" \
-            --csv "${mapping_file}" \
-            --output "${compat_dir}" \
-            --source-prefix "/${SITE_NAME}/" \
-            --target-prefix "${PUBLIC_DOCS_ROOT%/}/"
+          persisted_dir="${RUNNER_TEMP}/legacy-compat-persisted"
+          rm -rf "${compat_dir}" "${persisted_dir}"
+          mkdir -p "${compat_dir}/releases" "${compat_dir}/branches"
+
+          # Bridge pages are static artifacts. Keep the mapping CSV and bridge
+          # generator as the source of truth, but persist the generated tree
+          # on gh-pages so normal documentation builds do not recreate it.
+          compat_key="$({
+            sha256sum "${mapping_file}"
+            sha256sum "${TOOLKIT_DIR}/scripts/generate_html_bridges.py"
+            printf '%s\n' "${PUBLIC_DOCS_ROOT%/}"
+          } | sha256sum | cut -d ' ' -f1)"
+          compat_reused=false
+          if git cat-file -e "origin/gh-pages:.legacy-compat/manifest" 2>/dev/null \
+            && [[ "$(git show origin/gh-pages:.legacy-compat/manifest)" == "legacy-compat-v1:${compat_key}" ]]; then
+            mkdir -p "${persisted_dir}"
+            git archive origin/gh-pages .legacy-compat | tar -x -C "${persisted_dir}"
+            if [[ -d "${persisted_dir}/.legacy-compat/releases" && -d "${persisted_dir}/.legacy-compat/branches" ]]; then
+              cp -R "${persisted_dir}/.legacy-compat/releases/." "${compat_dir}/releases/"
+              cp -R "${persisted_dir}/.legacy-compat/branches/." "${compat_dir}/branches/"
+              compat_reused=true
+              echo "Reused persisted legacy bridge tree (key ${compat_key})"
+            fi
+          fi
+
+          if [[ "${compat_reused}" != "true" ]]; then
+            python "${TOOLKIT_DIR}/scripts/generate_html_bridges.py" \
+              --csv "${mapping_file}" \
+              --output "${compat_dir}" \
+              --source-prefix "/${SITE_NAME}/" \
+              --target-prefix "${PUBLIC_DOCS_ROOT%/}/"
+
+            # Persist only the generated HTML bridges, not the raw compatibility
+            # assets. Raw assets are copied from the current canonical export
+            # below and therefore continue to track the current build.
+            persist_workspace="${RUNNER_TEMP}/legacy-compat-gh-pages"
+            rm -rf "${persist_workspace}"
+            git worktree add --detach "${persist_workspace}" origin/gh-pages
+            rm -rf "${persist_workspace}/.legacy-compat"
+            mkdir -p "${persist_workspace}/.legacy-compat/releases" "${persist_workspace}/.legacy-compat/branches"
+            cp -R "${compat_dir}/releases/." "${persist_workspace}/.legacy-compat/releases/"
+            cp -R "${compat_dir}/branches/." "${persist_workspace}/.legacy-compat/branches/"
+            printf 'legacy-compat-v1:%s\n' "${compat_key}" > "${persist_workspace}/.legacy-compat/manifest"
+            git -C "${persist_workspace}" add -A .legacy-compat
+            if ! git -C "${persist_workspace}" diff --cached --quiet; then
+              git -C "${persist_workspace}" commit -m 'Persist legacy compatibility bridges'
+              git -C "${persist_workspace}" push origin HEAD:gh-pages
+            fi
+            git worktree remove --force "${persist_workspace}"
+            git fetch origin gh-pages --depth=1
+            echo "Generated and persisted legacy bridge tree (key ${compat_key})"
+          fi
 
           # Materialize mapped raw assets from their freshly exported canonical
           # targets before replacing the legacy HTML pages.
