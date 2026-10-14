@@ -419,11 +419,14 @@ jobs:
             --source-prefix "/${SITE_NAME}/" \
             --target-prefix "${PUBLIC_DOCS_ROOT%/}/"
 
+          # Replace stale legacy HTML pages, but preserve non-HTML assets such
+          # as historical JSON and images that may still be linked directly.
           mkdir -p site/releases site/branches
+          find site/releases site/branches -type f -name '*.html' -delete
           cp -R "${compat_dir}/releases/." site/releases/
           cp -R "${compat_dir}/branches/." site/branches/
 
-          if grep -RIl 'specs.amwa.tv/new/' site/releases site/branches; then
+          if grep -RIl --include='*.html' 'specs.amwa.tv/new/' site/releases site/branches; then
             echo 'Found stale temporary URL in legacy bridge pages' >&2
             exit 1
           fi
