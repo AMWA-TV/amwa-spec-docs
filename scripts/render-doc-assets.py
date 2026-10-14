@@ -453,7 +453,11 @@ def render_examples() -> None:
     if not EXAMPLE_SOURCE.is_dir():
         return
 
-    example_paths = sorted(EXAMPLE_SOURCE.rglob("*.json"))
+    example_paths = sorted(
+        path
+        for path in EXAMPLE_SOURCE.rglob("*.json")
+        if not any(part.startswith(".") for part in path.relative_to(EXAMPLE_SOURCE).parts)
+    )
     if not example_paths:
         return
 
@@ -598,12 +602,20 @@ def render_apis() -> None:
 
 
 def main() -> None:
-    # README.md files in these source trees are legacy navigation stubs. The
-    # generated index pages below are the actual Zensical section indexes.
+    # The root README files in these source trees are usually legacy navigation
+    # stubs. Some repositories use examples/README.md as real documentation,
+    # so let the shared workflow preserve it explicitly.
+    preserve_example_readme = os.environ.get("PRESERVE_EXAMPLE_README", "").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
     for tree in (API_DOCS, EXAMPLE_DOCS):
-        if tree.is_dir():
-            for readme in tree.rglob("README.md"):
-                readme.unlink()
+        if tree == EXAMPLE_DOCS and preserve_example_readme:
+            continue
+        readme = tree / "README.md"
+        if readme.is_file():
+            readme.unlink()
     render_apis()
     render_schemas()
     render_examples()

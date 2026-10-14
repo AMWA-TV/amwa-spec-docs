@@ -33,6 +33,16 @@ on:
         required: false
         type: string
         default: ''
+      submodules:
+        description: Recursively initialize repository submodules before building
+        required: false
+        type: boolean
+        default: false
+      preserve-example-readme:
+        description: Keep the root examples/README.md as a rendered documentation page
+        required: false
+        type: boolean
+        default: false
       toolkit-ref:
         description: Ref of amwa-spec-docs containing the shared build scripts
         required: false
@@ -84,6 +94,7 @@ jobs:
       VERSIONED: ${{ inputs.versioned }}
       RELEASE_PATTERN: ${{ inputs['release-pattern'] }}
       BRANCH_PATTERN: ${{ inputs['branch-pattern'] }}
+      PRESERVE_EXAMPLE_README: ${{ inputs['preserve-example-readme'] }}
       TOOLKIT_DIR: .amwa-spec-docs
 
     steps:
@@ -92,6 +103,7 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ inputs['source-ref'] }}
+          submodules: ${{ inputs.submodules && 'recursive' || false }}
 
       - name: Check out shared AMWA documentation toolkit
         uses: actions/checkout@v5

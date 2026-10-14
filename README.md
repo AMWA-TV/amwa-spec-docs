@@ -104,6 +104,8 @@ this supports migrating repositories that already have historical releases.
 | `legacy-mapping` | no | empty | Repository-relative CSV of legacy HTML URLs; bridge pages are generated only during deployment |
 | `versioned` | no | `true` | Select versioned or fixed-`latest` Mike behavior |
 | `source-ref` | no | triggering ref | Build a selected branch/tag, useful for manual rebuilds |
+| `submodules` | no | `false` | Recursively initialize repository submodules before preparing the docs tree |
+| `preserve-example-readme` | no | `false` | Keep `examples/README.md` as a rendered documentation page |
 | `toolkit-ref` | no | `main` | Shared toolkit ref; pin a release tag or SHA for production |
 | `rebuild-all` | no | `false` | Manual recovery/migration mode: rebuild all matching refs into Mike's `gh-pages` tree |
 | `publish` | no | `true` | Push `gh-pages` and upload to the AMWA server; set `false` for fork/PR build-only validation |
@@ -169,7 +171,9 @@ builds it there, and serves the completed site. It watches the working tree and
 rebuilds automatically when source files change. The working tree is not
 modified. Set `PORT`, `VENV_DIR`, or `RAML_DIR` to customize the local tools;
 set `KEEP_RENDER=1` to retain the generated temporary site after stopping the
-server. The preview includes `spec.json` at its site root.
+server. The preview includes `spec.json` at its site root. Set
+`PRESERVE_EXAMPLE_README=true` when `examples/README.md` is a documentation
+entry point rather than a navigation stub.
 
 ### Validate from a fork or pull request
 
