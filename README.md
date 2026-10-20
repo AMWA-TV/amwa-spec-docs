@@ -110,6 +110,46 @@ this supports migrating repositories that already have historical releases.
 | `release-pattern` | no | SemVer tags | Regex used by `rebuild-all` to select release tags |
 | `branch-pattern` | no | Version branches and `publish-*` | Regex used by `rebuild-all` to select branches |
 
+### Migrate a list of repositories
+
+Use `scripts/migrate-repositories.py` to prepare several specification
+repositories in one pass. It supports both versioned repositories and
+non-versioned repositories that call the shared documentation workflow. The
+command accepts repository names relative to a workspace or explicit repository
+paths:
+
+```sh
+python scripts/migrate-repositories.py \\
+  --workspace /path/to/amwa-repositories \\
+  is-06 is-09 is-10 is-11
+```
+
+The default is a dry run. It crawls each legacy site, derives targets from
+the repository's historical Git refs for versioned repositories, or from the
+current `docs/` tree for non-versioned repositories, checks targets against the
+current `/new/` staging tree, and reports the resulting mapping counts. Apply
+reviewed changes with:
+
+```sh
+python scripts/migrate-repositories.py \\
+  --workspace /path/to/amwa-repositories \\
+  --apply \\
+  is-06 is-09 is-10 is-11
+```
+
+For fixed-`latest` repositories, use the same command with their repository
+names, for example:
+
+```sh
+python scripts/migrate-repositories.py \
+  --workspace /path/to/amwa-repositories \
+  info-002 info-003 info-004 info-005 info-006
+```
+
+Applying updates only `docs.yml`, `README.md`, and `.docs/legacy-mappings.csv`.
+It does not commit, push, dispatch workflows, or modify/delete `render.yml`.
+Dirty worktrees are rejected unless `--allow-dirty` is supplied explicitly.
+
 The caller repository must give the reusable workflow `contents: write` when
 `publish` is true, and must provide or inherit these secrets when publishing:
 

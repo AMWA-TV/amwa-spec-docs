@@ -47,7 +47,7 @@ elif (
         {
             "file": "NMOS-logo.png",
             "alt": "NMOS logo",
-            "href": "https://specs.amwa.tv/new/nmos",
+            "href": "https://specs.amwa.tv/nmos",
         }
     )
 
