@@ -17,7 +17,7 @@ on:
         description: Directory prefix under the server document root; empty uploads directly under the server root
         required: false
         type: string
-        default: new
+        default: ''
       legacy-mapping:
         description: Repository-relative CSV containing legacy HTML URL mappings to bridge during upload
         required: false
@@ -78,7 +78,7 @@ jobs:
       SPEC_SERVER: specs.amwa.tv
       SITE_NAME: ${{ inputs['site-name'] || github.event.repository.name }}
       PUBLISH_ALLOWED: ${{ inputs.publish && github.event_name != 'pull_request' && github.event.repository.fork != true }}
-      PUBLIC_DOCS_ROOT: ${{ inputs['public-docs-root'] || format('https://specs.amwa.tv/new/{0}', github.event.repository.name) }}
+      PUBLIC_DOCS_ROOT: ${{ inputs['public-docs-root'] || format('https://specs.amwa.tv/{0}', github.event.repository.name) }}
       UPLOAD_PREFIX: ${{ inputs['upload-prefix'] }}
       LEGACY_MAPPING: ${{ inputs['legacy-mapping'] }}
       VERSIONED: ${{ inputs.versioned }}
@@ -174,7 +174,7 @@ jobs:
               ;;
             is-*|ms-*|bcp-*|info-*)
               test -s docs/images/NMOS-logo.png
-              grep -Fq "https://specs.amwa.tv/new/nmos" docs/javascripts/amwa-branding.js
+              grep -Fq "https://specs.amwa.tv/nmos" docs/javascripts/amwa-branding.js
               ;;
           esac
 

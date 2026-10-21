@@ -2,7 +2,7 @@
 #
 # Upload the built Zensical site to the AMWA web server using an atomic
 # replacement under /var/www/$SPEC_SERVER/$UPLOAD_PREFIX/$SITE_NAME. The
-# default prefix preserves the temporary /new deployment location.
+# An empty prefix deploys to the canonical site root.
 
 set -o errexit
 
@@ -29,7 +29,7 @@ if [[ ! -d site ]]; then
     exit 1
 fi
 
-UPLOAD_PREFIX="${UPLOAD_PREFIX-new}"
+UPLOAD_PREFIX="${UPLOAD_PREFIX-}"
 UPLOAD_PREFIX="${UPLOAD_PREFIX#/}"
 UPLOAD_PREFIX="${UPLOAD_PREFIX%/}"
 if [[ "$UPLOAD_PREFIX" == *..* || "$UPLOAD_PREFIX" == *" "* || "$UPLOAD_PREFIX" == */* ]]; then

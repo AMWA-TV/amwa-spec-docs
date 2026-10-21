@@ -9,7 +9,7 @@ its `gh-pages` branch, and uploads the complete site to the AMWA documentation
 server at:
 
 ```text
-/var/www/specs.amwa.tv/new/<site-name>
+/var/www/specs.amwa.tv/<site-name>
 ```
 
 The server-facing root is a static redirect to `latest/`, so this does not
@@ -54,7 +54,7 @@ jobs:
     with:
       versioned: true
       site-name: is-template
-      public-docs-root: https://specs.amwa.tv/new/is-template
+      public-docs-root: https://specs.amwa.tv/is-template
       source-ref: ${{ inputs.ref || github.ref_name }}
       # Use a released tag or commit SHA once the toolkit is released.
       toolkit-ref: main
@@ -80,7 +80,7 @@ jobs:
     with:
       versioned: false
       site-name: in-template
-      public-docs-root: https://specs.amwa.tv/new/in-template
+      public-docs-root: https://specs.amwa.tv/in-template
     secrets: inherit
 ```
 
@@ -100,7 +100,7 @@ this supports migrating repositories that already have historical releases.
 | --- | --- | --- | --- |
 | `site-name` | no | caller repository name | Site directory name below `upload-prefix` and upload name |
 | `public-docs-root` | yes | — | Unversioned public root used for canonical URLs |
-| `upload-prefix` | no | `new` | Directory below the server document root used for upload; set empty for a canonical site at the server root |
+| `upload-prefix` | no | empty | Directory below the server document root used for upload; leave empty for a canonical site at the server root |
 | `legacy-mapping` | no | empty | Repository-relative CSV of legacy HTML URLs; bridge pages are generated only during deployment |
 | `versioned` | no | `true` | Select versioned or fixed-`latest` Mike behavior |
 | `source-ref` | no | triggering ref | Build a selected branch/tag, useful for manual rebuilds |
@@ -193,7 +193,7 @@ bridge pages are not committed to the documentation repository.
 Each build also writes `global-search.json` at the site root. It is a compact
 manifest of the built HTML pages, intended for the central NMOS index to merge
 into the static global search at
-`https://specs.amwa.tv/new/nmos/global-search/`.
+`https://specs.amwa.tv/nmos/global-search/`.
 
 ## Local preview
 
