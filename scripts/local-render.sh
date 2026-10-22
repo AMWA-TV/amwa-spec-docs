@@ -6,7 +6,8 @@
 #   ../amwa-spec-docs/scripts/local-render.sh
 #
 # The temporary copy is removed when the preview server exits. Set
-# KEEP_RENDER=1 to keep it for inspection.
+# KEEP_RENDER=1 to keep it for inspection. Set INCLUDE_SUBMODULES=1 to stage
+# documentation from initialized Git submodules into the root site.
 
 set -euo pipefail
 
@@ -61,6 +62,33 @@ if [[ ! -x "${RAML_DIR}/node_modules/.bin/raml2html" ]]; then
     npm install --prefix "${RAML_DIR}" raml2html
 fi
 
+stage_submodule_docs() {
+    local build_dir="$1"
+    [[ "${INCLUDE_SUBMODULES:-0}" == "1" ]] || return 0
+
+    if [[ ! -f "${REPO_ROOT}/.gitmodules" ]]; then
+        echo "No .gitmodules file found; skipping submodule documentation."
+        return 0
+    fi
+
+    local submodule_path source target
+    while IFS= read -r submodule_path; do
+        [[ -n "${submodule_path}" ]] || continue
+        source="${build_dir}/${submodule_path}/docs"
+        if [[ ! -d "${source}" ]]; then
+            echo "Skipping ${submodule_path}: no docs directory"
+            continue
+        fi
+        target="${build_dir}/docs/submodules/${submodule_path}"
+        mkdir -p "${target}"
+        rsync -a --exclude '.git/' "${source}/" "${target}/"
+        echo "Staged submodule documentation: ${submodule_path}/docs"
+    done < <(
+        git -C "${REPO_ROOT}" submodule foreach --quiet --recursive \
+            'printf "%s\\n" "$displaypath"'
+    )
+}
+
 build_site() {
     local build_dir="${WORK_DIR}/build"
     rm -rf "${build_dir}"
@@ -88,6 +116,7 @@ build_site() {
         export TOOLKIT_DIR
 
         bash "${TOOLKIT_DIR}/scripts/prepare-docs.sh"
+        stage_submodule_docs "${build_dir}"
         "${VENV_DIR}/bin/zensical" build --clean
         if [[ -f spec.yml ]]; then
             python3 "${TOOLKIT_DIR}/scripts/render-spec-json.py"
