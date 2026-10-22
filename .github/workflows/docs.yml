@@ -28,6 +28,11 @@ on:
         required: false
         type: boolean
         default: true
+      include-submodules:
+        description: Initialize and publish documentation from Git submodules
+        required: false
+        type: boolean
+        default: false
       source-ref:
         description: Optional branch or tag to build instead of the triggering ref
         required: false
@@ -84,6 +89,7 @@ jobs:
       VERSIONED: ${{ inputs.versioned }}
       RELEASE_PATTERN: ${{ inputs['release-pattern'] }}
       BRANCH_PATTERN: ${{ inputs['branch-pattern'] }}
+      INCLUDE_SUBMODULES: ${{ inputs['include-submodules'] && '1' || '0' }}
       TOOLKIT_DIR: .amwa-spec-docs
 
     steps:
@@ -92,7 +98,7 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ inputs['source-ref'] }}
-          submodules: recursive
+          submodules: ${{ inputs['include-submodules'] && 'recursive' || 'false' }}
 
       - name: Check out shared AMWA documentation toolkit
         uses: actions/checkout@v5
@@ -186,8 +192,7 @@ jobs:
           fi
 
       - name: Stage initialized submodule documentation
-        env:
-          INCLUDE_SUBMODULES: '1'
+        if: env.INCLUDE_SUBMODULES == '1'
         run: bash "${TOOLKIT_DIR}/scripts/stage-submodule-docs.sh"
 
       - name: Build documentation
@@ -314,9 +319,13 @@ jobs:
               cd "${latest_workspace}"
               export BUILD_REF="${latest_version}"
               export TOOLKIT_DIR="${GITHUB_WORKSPACE}/${TOOLKIT_DIR}"
-              git submodule update --init --recursive
+              if [[ "${INCLUDE_SUBMODULES}" == "1" ]]; then
+                git submodule update --init --recursive
+              fi
               bash "${TOOLKIT_DIR}/scripts/prepare-docs.sh"
-              INCLUDE_SUBMODULES=1 bash "${TOOLKIT_DIR}/scripts/stage-submodule-docs.sh"
+              if [[ "${INCLUDE_SUBMODULES}" == "1" ]]; then
+                bash "${TOOLKIT_DIR}/scripts/stage-submodule-docs.sh"
+              fi
               if [[ ! -f spec.yml && -n "${METADATA_DIR:-}" && -f "${METADATA_DIR}/spec.yml" ]]; then
                 cp "${METADATA_DIR}/spec.yml" spec.yml
               fi
@@ -364,9 +373,13 @@ jobs:
               cd "${workspace}"
               export BUILD_REF="${ref_name}"
               export TOOLKIT_DIR="${GITHUB_WORKSPACE}/${TOOLKIT_DIR}"
-              git submodule update --init --recursive
+              if [[ "${INCLUDE_SUBMODULES}" == "1" ]]; then
+                git submodule update --init --recursive
+              fi
               bash "${TOOLKIT_DIR}/scripts/prepare-docs.sh"
-              INCLUDE_SUBMODULES=1 bash "${TOOLKIT_DIR}/scripts/stage-submodule-docs.sh"
+              if [[ "${INCLUDE_SUBMODULES}" == "1" ]]; then
+                bash "${TOOLKIT_DIR}/scripts/stage-submodule-docs.sh"
+              fi
               if [[ ! -f spec.yml && -n "${METADATA_DIR:-}" && -f "${METADATA_DIR}/spec.yml" ]]; then
                 cp "${METADATA_DIR}/spec.yml" spec.yml
               fi
