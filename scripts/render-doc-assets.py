@@ -509,7 +509,14 @@ def render_examples() -> None:
     if not EXAMPLE_SOURCE.is_dir():
         return
 
-    example_paths = sorted(EXAMPLE_SOURCE.rglob("*.json"))
+    # Hidden source trees such as .github/ are repository tooling, not
+    # published documentation pages. Zensical does not render their generated
+    # Markdown paths, so do not add links to them to the public index.
+    example_paths = sorted(
+        path
+        for path in EXAMPLE_SOURCE.rglob("*.json")
+        if not any(part.startswith(".") for part in path.relative_to(EXAMPLE_SOURCE).parts)
+    )
     if not example_paths:
         return
 
