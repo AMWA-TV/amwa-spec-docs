@@ -164,25 +164,18 @@ if [[ ! -f README.md ]]; then
     exit 1
 fi
 
-# Zensical emits docs/404.md as a static site/404.html. Supply a shared
-# source marker and override its template so unknown paths stay within the
-# Zensical render rather than being handled by the legacy server site. Preserve
-# repository-specific 404 sources and theme overrides.
-python3 - "${TOOLKIT_DIR}/assets/404.md" "${TOOLKIT_DIR}/assets/404.html" "${BUILD_DOCS_ROOT%/}" <<'PY'
+# Supply a shared 404 template so unknown paths stay within the Zensical
+# render rather than being handled by the legacy server site. Do not stage a
+# docs/404.md source: older Zensical releases include that source in the
+# automatically generated navigation, which creates a bogus Page not found
+# documentation page and Previous/Next entry.
+python3 - "${TOOLKIT_DIR}/assets/404.html" "${BUILD_DOCS_ROOT%/}" <<'PY'
 from pathlib import Path
 import re
 import sys
 
-marker_source = Path(sys.argv[1])
-template_source = Path(sys.argv[2])
-root = sys.argv[3]
-
-if not Path("docs/404.md").is_file():
-    content = marker_source.read_text(encoding="utf-8").replace(
-        "__PUBLIC_DOCS_ROOT__", root
-    )
-    Path("docs/404.md").write_text(content, encoding="utf-8")
-    print("Staged shared Zensical 404 source marker")
+template_source = Path(sys.argv[1])
+root = sys.argv[2]
 
 config = Path("zensical.toml")
 if not config.is_file():
@@ -222,7 +215,7 @@ if not template.is_file():
         ),
         encoding="utf-8",
     )
-    print(f"Staged shared Zensical 404 template in {custom_dir}")
+    print(f"Staged shared 404 template in {custom_dir}")
 PY
 
 # Zensical builds from docs/, while these optional source directories live at

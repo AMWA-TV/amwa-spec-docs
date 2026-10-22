@@ -20,6 +20,7 @@ import shutil
 
 repo_name = os.environ["GITHUB_REPOSITORY"].rsplit("/", 1)[-1]
 toolkit_dir = Path(os.environ["TOOLKIT_DIR"])
+fixed_navigation = repo_name == "nmos" or repo_name.startswith("in-")
 docs_dir = Path(os.environ.get("DOCS_DIR", "docs"))
 asset_names = ["AMWA-logo.png"]
 logo_specs = [
@@ -149,6 +150,72 @@ css = """\
 (docs_dir / "stylesheets").mkdir(parents=True, exist_ok=True)
 (docs_dir / "stylesheets" / "amwa-branding.css").write_text(css, encoding="utf-8")
 
+if fixed_navigation:
+    fixed_navigation_css = """\
+/* Keep only the Previous/Next navigation visible while scrolling. */
+.md-footer__inner {
+  background: var(--md-footer-bg-color, var(--md-default-bg-color));
+  bottom: 0;
+  box-shadow: 0 -0.1rem 0.4rem #0003;
+  left: 0;
+  margin-left: 0;
+  margin-right: 0;
+  max-width: none;
+  padding-bottom: calc(0.1rem + env(safe-area-inset-bottom, 0px));
+  padding-left: max(0.2rem, env(safe-area-inset-left, 0px));
+  padding-right: max(0.2rem, env(safe-area-inset-right, 0px));
+  padding-top: 0;
+  position: fixed;
+  right: 0;
+  width: 100%;
+  z-index: 3;
+}
+
+.md-footer__link {
+  align-items: center;
+  margin-bottom: 0;
+  margin-top: 0;
+  padding: 0.15rem 0.2rem;
+}
+
+.md-footer__title {
+  margin-bottom: 0;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.md-footer__button {
+  margin: 0;
+  padding: 0.15rem;
+}
+
+/* Keep the normal copyright footer above the fixed Previous/Next bar. */
+.md-footer-meta {
+  padding-bottom: 3.5rem;
+}
+
+.md-content__inner {
+  padding-bottom: 4rem;
+}
+
+@media print {
+  .md-footer__inner {
+    position: static;
+  }
+
+  .md-content__inner {
+    padding-bottom: 0;
+  }
+
+  .md-footer-meta {
+    padding-bottom: 0;
+  }
+}
+"""
+    (docs_dir / "stylesheets" / "fixed-navigation.css").write_text(
+        fixed_navigation_css, encoding="utf-8"
+    )
+
 js = f"""(() => {{
   const header = document.querySelector('.md-header__inner') || document.querySelector('header');
   if (!header || header.querySelector('.amwa-header-branding')) return;
@@ -213,6 +280,8 @@ if config.is_file():
         return section_text.rstrip() + f'\n{key} = [{json.dumps(value)}]\n'
 
     section = add_to_array(section, "extra_css", "stylesheets/amwa-branding.css")
+    if fixed_navigation:
+        section = add_to_array(section, "extra_css", "stylesheets/fixed-navigation.css")
     section = add_to_array(section, "extra_javascript", "javascripts/amwa-branding.js")
     config.write_text(text[:project.start()] + section + text[project.end():], encoding="utf-8")
 else:
@@ -233,6 +302,8 @@ else:
         return section_text.rstrip() + f"\n{key}:\n  - {value}\n"
 
     text = add_yaml_list(text, "extra_css", "stylesheets/amwa-branding.css")
+    if fixed_navigation:
+        text = add_yaml_list(text, "extra_css", "stylesheets/fixed-navigation.css")
     text = add_yaml_list(text, "extra_javascript", "javascripts/amwa-branding.js")
     config.write_text(text, encoding="utf-8")
 PY

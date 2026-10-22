@@ -21,10 +21,15 @@ from mike import commands, driver, git_utils, utils
 def run_metadata_generators(toolkit_dir: str) -> None:
     toolkit = Path(toolkit_dir).resolve()
     scripts = toolkit / "scripts"
-    subprocess.run(
-        [sys.executable, str(scripts / "render-spec-json.py")],
-        check=True,
-    )
+    spec_source = Path("spec.yml")
+    if spec_source.is_file():
+        subprocess.run(
+            [sys.executable, str(scripts / "render-spec-json.py")],
+            check=True,
+        )
+    else:
+        print("Skipping spec.json generation: spec.yml not found")
+
     subprocess.run(
         [sys.executable, str(scripts / "render-search-index.py")],
         check=True,

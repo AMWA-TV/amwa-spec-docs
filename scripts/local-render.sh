@@ -89,7 +89,11 @@ build_site() {
 
         bash "${TOOLKIT_DIR}/scripts/prepare-docs.sh"
         "${VENV_DIR}/bin/zensical" build --clean
-        python3 "${TOOLKIT_DIR}/scripts/render-spec-json.py"
+        if [[ -f spec.yml ]]; then
+            python3 "${TOOLKIT_DIR}/scripts/render-spec-json.py"
+        else
+            echo "Skipping spec.json generation: spec.yml not found"
+        fi
         python3 "${TOOLKIT_DIR}/scripts/render-search-index.py"
     ); then
         echo "Documentation build failed." >&2
