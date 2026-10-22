@@ -62,77 +62,6 @@ if [[ ! -x "${RAML_DIR}/node_modules/.bin/raml2html" ]]; then
     npm install --prefix "${RAML_DIR}" raml2html
 fi
 
-stage_submodule_docs() {
-    local build_dir="$1"
-    [[ "${INCLUDE_SUBMODULES:-0}" == "1" ]] || return 0
-
-    if [[ ! -f "${REPO_ROOT}/.gitmodules" ]]; then
-        echo "No .gitmodules file found; skipping submodule documentation."
-        return 0
-    fi
-
-    local submodule_path source target
-    while IFS= read -r submodule_path; do
-        [[ -n "${submodule_path}" ]] || continue
-        source="${build_dir}/${submodule_path}/docs"
-        if [[ ! -d "${source}" ]]; then
-            echo "Skipping ${submodule_path}: no docs directory"
-            continue
-        fi
-        # prepare-docs.sh may already have copied examples/ into docs/. Remove
-        # only the copied submodule docs tree there; retain generated JSON
-        # example pages in the same tree.
-        rm -rf "${build_dir}/docs/${submodule_path}/docs"
-        if [[ "${submodule_path}" == examples/* ]]; then
-            rm -f "${build_dir}/docs/examples/README.md"
-        fi
-
-        target="${build_dir}/docs/submodules/${submodule_path}"
-        mkdir -p "${target}"
-        rsync -a --exclude '.git/' "${source}/" "${target}/"
-
-        # Keep links within the staged docs tree. Links to source files or
-        # READMEs outside that tree are rendered as plain text instead of
-        # producing broken-page warnings from Zensical.
-        python3 - "${source}" "${target}" <<'PY'
-from pathlib import Path
-import re
-import sys
-
-source_root = Path(sys.argv[1]).resolve()
-staged_docs = Path(sys.argv[2]).resolve()
-link_pattern = re.compile(r"(?<!\!)\[([^\]]+)\]\(([^)]*)\)")
-
-for page in staged_docs.rglob("*.md"):
-    source_page = source_root / page.relative_to(staged_docs)
-    text = page.read_text(encoding="utf-8")
-
-    def replace(match: re.Match[str]) -> str:
-        label, target = match.groups()
-        if target.startswith(("http://", "https://", "mailto:", "#")):
-            return match.group(0)
-        path = target.split("#", 1)[0].strip()
-        if not path.endswith((".md", ".markdown")):
-            return match.group(0)
-        candidate = (source_page.parent / path).resolve()
-        try:
-            candidate.relative_to(source_root / "docs")
-        except ValueError:
-            return label
-        if not candidate.is_file():
-            return label
-        return match.group(0)
-
-    updated = link_pattern.sub(replace, text)
-    if updated != text:
-        page.write_text(updated, encoding="utf-8")
-PY
-        echo "Staged submodule documentation: ${submodule_path}/docs"
-    done < <(
-        git -C "${REPO_ROOT}" submodule foreach --quiet --recursive \
-            'printf "%s\\n" "$displaypath"'
-    )
-}
 
 build_site() {
     local build_dir="${WORK_DIR}/build"
@@ -161,7 +90,8 @@ build_site() {
         export TOOLKIT_DIR
 
         bash "${TOOLKIT_DIR}/scripts/prepare-docs.sh"
-        stage_submodule_docs "${build_dir}"
+        REPO_ROOT="${REPO_ROOT}" INCLUDE_SUBMODULES="${INCLUDE_SUBMODULES:-0}" \
+            bash "${TOOLKIT_DIR}/scripts/stage-submodule-docs.sh"
         "${VENV_DIR}/bin/zensical" build --clean
         if [[ -f spec.yml ]]; then
             python3 "${TOOLKIT_DIR}/scripts/render-spec-json.py"

@@ -92,6 +92,7 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ inputs['source-ref'] }}
+          submodules: recursive
 
       - name: Check out shared AMWA documentation toolkit
         uses: actions/checkout@v5
@@ -183,6 +184,11 @@ jobs:
           if [[ ! -f spec.yml && -n "${METADATA_DIR:-}" && -f "${METADATA_DIR}/spec.yml" ]]; then
             cp "${METADATA_DIR}/spec.yml" spec.yml
           fi
+
+      - name: Stage initialized submodule documentation
+        env:
+          INCLUDE_SUBMODULES: '1'
+        run: bash "${TOOLKIT_DIR}/scripts/stage-submodule-docs.sh"
 
       - name: Build documentation
         run: zensical build --clean
@@ -308,7 +314,9 @@ jobs:
               cd "${latest_workspace}"
               export BUILD_REF="${latest_version}"
               export TOOLKIT_DIR="${GITHUB_WORKSPACE}/${TOOLKIT_DIR}"
+              git submodule update --init --recursive
               bash "${TOOLKIT_DIR}/scripts/prepare-docs.sh"
+              INCLUDE_SUBMODULES=1 bash "${TOOLKIT_DIR}/scripts/stage-submodule-docs.sh"
               if [[ ! -f spec.yml && -n "${METADATA_DIR:-}" && -f "${METADATA_DIR}/spec.yml" ]]; then
                 cp "${METADATA_DIR}/spec.yml" spec.yml
               fi
@@ -356,7 +364,9 @@ jobs:
               cd "${workspace}"
               export BUILD_REF="${ref_name}"
               export TOOLKIT_DIR="${GITHUB_WORKSPACE}/${TOOLKIT_DIR}"
+              git submodule update --init --recursive
               bash "${TOOLKIT_DIR}/scripts/prepare-docs.sh"
+              INCLUDE_SUBMODULES=1 bash "${TOOLKIT_DIR}/scripts/stage-submodule-docs.sh"
               if [[ ! -f spec.yml && -n "${METADATA_DIR:-}" && -f "${METADATA_DIR}/spec.yml" ]]; then
                 cp "${METADATA_DIR}/spec.yml" spec.yml
               fi
