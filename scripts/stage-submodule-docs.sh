@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Stage documentation from initialized Git submodules into docs/submodules/.
-# Set INCLUDE_SUBMODULES=1 to enable this optional behavior.
+# Stage documentation from initialized Git submodules into their source tree
+# under docs/. Set INCLUDE_SUBMODULES=1 to enable this optional behavior.
 #
 # This script must run from the repository root after prepare-docs.sh, because
 # prepare-docs.sh may have copied source directories into docs/ already.
@@ -18,6 +18,7 @@ fi
 
 while IFS= read -r submodule_path; do
     [[ -n "${submodule_path}" ]] || continue
+    [[ "${submodule_path}" == examples/* ]] || continue
 
     source="${submodule_path}/docs"
     if [[ ! -d "${source}" ]]; then
@@ -25,15 +26,12 @@ while IFS= read -r submodule_path; do
         continue
     fi
 
-    # prepare-docs.sh may already have copied examples/ into docs/. Remove
-    # only the copied submodule docs tree there; retain generated JSON example
-    # pages in the same tree.
+    # prepare-docs.sh may already have copied the submodule into docs/. Remove
+    # only its source docs tree, retaining generated JSON pages and other
+    # example assets in the same examples tree.
     rm -rf "docs/${submodule_path}/docs"
-    if [[ "${submodule_path}" == examples/* ]]; then
-        rm -f docs/examples/README.md
-    fi
 
-    target="docs/submodules/${submodule_path}"
+    target="docs/${submodule_path}"
     mkdir -p "${target}"
     cp -R "${source}/." "${target}/"
 

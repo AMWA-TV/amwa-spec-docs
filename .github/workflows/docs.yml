@@ -33,6 +33,11 @@ on:
         required: false
         type: boolean
         default: false
+      preserve-example-readme:
+        description: Keep the root examples/README.md as a rendered documentation page
+        required: false
+        type: boolean
+        default: false
       source-ref:
         description: Optional branch or tag to build instead of the triggering ref
         required: false
@@ -90,6 +95,7 @@ jobs:
       RELEASE_PATTERN: ${{ inputs['release-pattern'] }}
       BRANCH_PATTERN: ${{ inputs['branch-pattern'] }}
       INCLUDE_SUBMODULES: ${{ inputs['include-submodules'] && '1' || '0' }}
+      PRESERVE_EXAMPLE_README: ${{ inputs['preserve-example-readme'] && '1' || '0' }}
       TOOLKIT_DIR: .amwa-spec-docs
 
     steps:

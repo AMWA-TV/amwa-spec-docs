@@ -103,6 +103,8 @@ this supports migrating repositories that already have historical releases.
 | `upload-prefix` | no | empty | Directory below the server document root used for upload; leave empty for a canonical site at the server root |
 | `legacy-mapping` | no | empty | Repository-relative CSV of legacy HTML URLs; bridge pages are generated only during deployment |
 | `versioned` | no | `true` | Select versioned or fixed-`latest` Mike behavior |
+| `include-submodules` | no | `false` | Initialize and publish documentation from Git submodules under their source tree |
+| `preserve-example-readme` | no | `false` | Keep `examples/README.md` as a rendered documentation page |
 | `source-ref` | no | triggering ref | Build a selected branch/tag, useful for manual rebuilds |
 | `toolkit-ref` | no | `main` | Shared toolkit ref; pin a release tag or SHA for production |
 | `rebuild-all` | no | `false` | Manual recovery/migration mode: rebuild all matching refs into Mike's `gh-pages` tree |

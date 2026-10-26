@@ -661,9 +661,17 @@ def render_apis() -> None:
 
 
 def main() -> None:
-    # README.md files in these source trees are legacy navigation stubs. The
-    # generated index pages below are the actual Zensical section indexes.
+    # README.md files in these source trees are usually legacy navigation
+    # stubs. Some repositories use examples/README.md as real documentation,
+    # so let the shared workflow preserve that page explicitly.
+    preserve_example_readme = os.environ.get("PRESERVE_EXAMPLE_README", "").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
     for tree in (API_DOCS, EXAMPLE_DOCS):
+        if tree == EXAMPLE_DOCS and preserve_example_readme:
+            continue
         if tree.is_dir():
             for readme in tree.rglob("README.md"):
                 readme.unlink()
