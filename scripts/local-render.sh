@@ -86,6 +86,9 @@ build_site() {
         # append BUILD_REF here.
         export DOCS_URL="${DOCS_URL:-http://127.0.0.1:${PORT}}"
         export PUBLIC_DOCS_ROOT="${PUBLIC_DOCS_ROOT:-${DOCS_URL}}"
+        # The local preview serves the generated site at its root rather than
+        # through Mike's /latest/ deployment path.
+        export BUILD_DOCS_ROOT="${DOCS_URL}"
         export RAML2HTML_BIN="${RAML_DIR}/node_modules/.bin/raml2html"
         export TOOLKIT_DIR
 

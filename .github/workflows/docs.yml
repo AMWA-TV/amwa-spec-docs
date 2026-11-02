@@ -178,6 +178,12 @@ jobs:
 
       - name: Prepare docs tree for site build
         run: |
+          if [[ "${VERSIONED}" == "true" && -n "${BUILD_REF}" ]]; then
+            export BUILD_DOCS_ROOT="${PUBLIC_DOCS_ROOT%/}/${BUILD_REF}"
+          else
+            # Fixed-version Mike deployments are stored below latest/.
+            export BUILD_DOCS_ROOT="${PUBLIC_DOCS_ROOT%/}/latest"
+          fi
           bash "${TOOLKIT_DIR}/scripts/prepare-docs.sh"
           test -s docs/images/AMWA-logo.png
           grep -Fq "https://www.amwa.tv" docs/javascripts/amwa-branding.js
@@ -246,7 +252,8 @@ jobs:
           if [[ "${VERSIONED}" == "true" && -n "${BUILD_REF}" ]]; then
             LINKCHECK_PATH="${SITE_NAME}/${BUILD_REF}"
           else
-            LINKCHECK_PATH="${SITE_NAME}"
+            # Fixed-version Mike deployments are stored below latest/.
+            LINKCHECK_PATH="${SITE_NAME}/latest"
           fi
           rm -rf "${LINKCHECK_ROOT}"
           mkdir -p "${LINKCHECK_ROOT}/${LINKCHECK_PATH}"
@@ -444,11 +451,24 @@ jobs:
             cp site/latest/global-search.json site/global-search.json
           fi
           test -s site/latest/global-search.json
-          # Use a static redirect rather than .htaccess; server-level Apache
-          # rules already apply to the AMWA documentation tree. Use an
-          # absolute path so the redirect also works when the request omits
-          # the trailing slash (for example, /new/in-003).
+
+          # Existing public links point at the unversioned site root, while
+          # Mike stores the current documentation below latest/. Redirect old
+          # page, asset, and metadata paths without duplicating the tree.
           latest_url="${PUBLIC_DOCS_ROOT%/}/latest/"
+          cat > site/.htaccess <<EOF
+          RewriteEngine On
+          RewriteRule ^latest(?:/|$) - [L]
+          RewriteRule ^v[0-9]+(?:\\.[0-9]+)+(?:-dev|\\.x)?(?:/|$) - [L]
+          RewriteRule ^(?:releases|branches)(?:/|$) - [L]
+          RewriteRule ^(?:main|publish-[^/]+)(?:/|$) - [L]
+          RewriteCond %{REQUEST_FILENAME} !-f
+          RewriteCond %{REQUEST_FILENAME} !-d
+          RewriteRule ^(.+?)(/?)$ ${latest_url}\$1\$2 [R=301,L]
+          EOF
+
+          # Use a static root redirect as well, so the canonical site root
+          # works even when directory-level rewrite rules are unavailable.
           cat > site/index.html <<EOF
           <!doctype html>
           <html lang="en">

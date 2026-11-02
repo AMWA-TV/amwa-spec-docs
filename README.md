@@ -12,11 +12,13 @@ server at:
 /var/www/specs.amwa.tv/<site-name>
 ```
 
-The server-facing root is a static redirect to `latest/`, so this does not
-require `.htaccess` or directory-specific Apache configuration. Repositories
-that contain `spec.yml` also publish the same metadata as `spec.json` at the
-unversioned site root, for example `https://specs.amwa.tv/in-template/spec.json`.
-This makes repository metadata available without a source checkout.
+The server-facing root is a static redirect to `latest/`. Deployment also
+writes a `.htaccess` file inside each individual site tree, redirecting legacy
+unversioned page and asset URLs to the corresponding `latest/` path without
+requiring callers to add `latest/` to existing links. Repositories that contain
+`spec.yml` also publish the same metadata as `spec.json` at the unversioned site
+root, for example `https://specs.amwa.tv/in-template/spec.json`. This makes
+repository metadata available without a source checkout.
 
 ## Use from a documentation repository
 
