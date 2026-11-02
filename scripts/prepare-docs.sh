@@ -103,6 +103,19 @@ else:
     if updated != text:
         config.write_text(updated, encoding="utf-8")
 
+# Fixed-version repositories are deployed below latest/, but have no version
+# choices to present in the site navigation. Keep Mike as the deployment tool,
+# while disabling its Zensical version-provider integration for these builds.
+if os.environ.get("VERSIONED", "false").lower() != "true":
+    text = config.read_text(encoding="utf-8")
+    updated = re.sub(
+        r"(?ms)^\[project\.extra\.version\]\n.*?(?=^\[|\Z)",
+        "",
+        text,
+    )
+    if updated != text:
+        config.write_text(updated, encoding="utf-8")
+
 # Keep the historical README body, but use the current metadata header so
 # published versions have the same title, badges, and introductory sections.
 # Older refs may not have the INTRO markers yet, so insert the current intro
