@@ -87,12 +87,28 @@ if not config.is_file():
     )
 else:
     text = config.read_text(encoding="utf-8")
-    updated = re.sub(
-        r"(?m)^site_url\s*=.*$",
-        f'site_url = "{site_url}"',
-        text,
-        count=1,
-    )
+    site_url_setting = f'site_url = "{site_url}"'
+    if re.search(r"(?m)^site_url\s*=", text):
+        updated = re.sub(
+            r"(?m)^site_url\s*=.*$",
+            site_url_setting,
+            text,
+            count=1,
+        )
+    elif re.search(r"(?m)^\s*#\s*site_url\s*=", text):
+        updated = re.sub(
+            r"(?m)^\s*#\s*site_url\s*=.*$",
+            site_url_setting,
+            text,
+            count=1,
+        )
+    else:
+        updated = re.sub(
+            r"(?m)^\[project\]\s*$",
+            f"[project]\n{site_url_setting}",
+            text,
+            count=1,
+        )
     if not re.search(r"(?m)^not_in_nav\s*=", updated):
         updated = re.sub(
             r"(?m)^\[project\]\s*$",
