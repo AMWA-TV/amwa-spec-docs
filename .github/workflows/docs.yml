@@ -99,6 +99,13 @@ jobs:
       TOOLKIT_DIR: .amwa-spec-docs
 
     steps:
+
+      - name: Show runner image
+        run: |
+          echo "ImageOS=${ImageOS:-unknown}"
+          echo "ImageVersion=${ImageVersion:-unknown}"
+          lsb_release -a
+      
       - name: Check out documentation repository
         uses: actions/checkout@v5
         with:
