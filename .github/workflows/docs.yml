@@ -206,7 +206,36 @@ jobs:
 
 
       - name: Install lychee
-        run: sudo snap install lychee
+        env:
+          LYCHEE_VERSION: v0.24.2
+          LYCHEE_ARCHIVE: lychee-x86_64-unknown-linux-musl.tar.gz
+        run: |
+          set -euo pipefail
+
+          download_url="https://github.com/lycheeverse/lychee/releases/download/lychee-${LYCHEE_VERSION}/${LYCHEE_ARCHIVE}"
+          download_dir="${RUNNER_TEMP}/lychee-download"
+          install_dir="${RUNNER_TEMP}/lychee/bin"
+
+          rm -rf "${download_dir}" "${install_dir}"
+          mkdir -p "${download_dir}" "${install_dir}"
+          cd "${download_dir}"
+
+          curl --fail --location --retry 5 --retry-all-errors \
+            --output "${LYCHEE_ARCHIVE}" "${download_url}"
+          curl --fail --location --retry 5 --retry-all-errors \
+            --output "${LYCHEE_ARCHIVE}.sha256" "${download_url}.sha256"
+
+          expected_sha256="$(awk '{ print $1; exit }' "${LYCHEE_ARCHIVE}.sha256")"
+          actual_sha256="$(sha256sum "${LYCHEE_ARCHIVE}" | awk '{ print $1 }')"
+          test "${expected_sha256}" = "${actual_sha256}"
+
+          tar -xzf "${LYCHEE_ARCHIVE}"
+          lychee_binary="$(find . -type f -name lychee -perm -111 -print -quit)"
+          test -n "${lychee_binary}"
+          install -m 0755 "${lychee_binary}" "${install_dir}/lychee"
+
+          echo "${install_dir}" >> "${GITHUB_PATH}"
+          "${install_dir}/lychee" --version
 
       # Mike publishes versioned sites below SITE_NAME/BUILD_REF. Stage the
       # build at that same path so root-relative links are checked locally,
