@@ -82,7 +82,16 @@ permissions:
   contents: write
 
 jobs:
+  lint:
+    uses: AMWA-TV/amwa-spec-docs/.github/workflows/lint.yml@main
+    with:
+      include-submodules: ${{ inputs['include-submodules'] }}
+      source-ref: ${{ inputs['source-ref'] }}
+      toolkit-ref: ${{ inputs['toolkit-ref'] }}
+    secrets: inherit
+
   deploy:
+    needs: lint
     runs-on: ubuntu-26.04
     env:
       SPEC_SERVER: specs.amwa.tv

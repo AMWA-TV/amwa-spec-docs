@@ -96,6 +96,26 @@ numeric GitHub release (for example `v1.2.0`). If there are no such releases,
 been published to Mike's `gh-pages` tree, the workflow builds that ref first;
 this supports migrating repositories that already have historical releases.
 
+### Lint workflow
+
+Repositories can use the shared lint workflow for pull requests and standalone
+validation:
+
+```yaml
+name: Lint
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  lint:
+    uses: AMWA-TV/amwa-spec-docs/.github/workflows/lint.yml@main
+```
+
+The documentation workflow runs the same lint workflow before building the
+site. It checks Markdown formatting and source data/API syntax. It intentionally
+does not validate Markdown links; the render workflow's Lychee step checks the
+completed generated site once, after Zensical has staged root-level sources and
+submodules.
+
 ### Inputs
 
 | Input | Required | Default | Purpose |

@@ -1,0 +1,65 @@
+name: Lint AMWA documentation
+
+on:
+  workflow_call:
+    inputs:
+      include-submodules:
+        description: Initialize and lint documentation from Git submodules
+        required: false
+        type: boolean
+        default: false
+      source-ref:
+        description: Optional branch or tag to lint instead of the triggering ref
+        required: false
+        type: string
+        default: ''
+      toolkit-ref:
+        description: Ref of amwa-spec-docs containing the lint scripts
+        required: false
+        type: string
+        default: main
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-26.04
+    env:
+      TOOLKIT_DIR: .amwa-spec-docs
+    steps:
+      - name: Check out documentation repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+          ref: ${{ inputs['source-ref'] }}
+          submodules: ${{ inputs['include-submodules'] && 'recursive' || 'false' }}
+
+      - name: Check out shared AMWA documentation toolkit
+        uses: actions/checkout@v5
+        with:
+          repository: AMWA-TV/amwa-spec-docs
+          ref: ${{ inputs['toolkit-ref'] }}
+          path: .amwa-spec-docs
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Install lint tools
+        run: |
+          npm install --prefix "${RUNNER_TEMP}/amwa-spec-lint" \
+            jsonlint@^1.6.3 \
+            remark-cli@^7.0.1 \
+            remark-preset-lint-recommended@^3.0.3 \
+            yaml-lint@^1.2.4 \
+            AMWA-TV/sdpoker
+          echo "${RUNNER_TEMP}/amwa-spec-lint/node_modules/.bin" >> "${GITHUB_PATH}"
+
+      - name: Lint documentation sources
+        env:
+          NODE_PATH: ${{ runner.temp }}/amwa-spec-lint/node_modules
+          REMARKRC: ${{ github.workspace }}/.amwa-spec-docs/.remarkrc
+        run: bash "${TOOLKIT_DIR}/scripts/lint-docs.sh"
