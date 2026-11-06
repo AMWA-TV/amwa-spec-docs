@@ -256,6 +256,27 @@ for directory in APIs examples manifest models schemas; do
     fi
 done
 
+# Stage source directories declared by repository manifests in the temporary
+# docs tree. This keeps register and feature-set sources at repository root
+# without requiring duplicate docs/ copies in the source repositories.
+stage_manifest_directories() {
+    local manifest="$1"
+    [[ -f "${manifest}" ]] || return 0
+
+    while IFS= read -r directory; do
+        [[ -n "${directory}" && -d "${directory}" ]] || continue
+        rm -rf "docs/${directory}"
+        cp -R "${directory}" "docs/${directory}"
+    done < <(
+        sed -n -E \
+            's/^[[:space:]]*-[[:space:]]+id:[[:space:]]*([^[:space:]#]+).*$/\1/p' \
+            "${manifest}"
+    )
+}
+
+stage_manifest_directories registers.yml
+stage_manifest_directories feature_sets.yml
+
 # Generate foldable source pages for repositories that provide the shared
 # source-viewer assets (for example, IN-003's manifest and deployment files).
 if [[ -f docs/javascripts/source-viewer.js && -f docs/stylesheets/source-viewer.css ]]; then
