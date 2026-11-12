@@ -186,12 +186,20 @@ The caller repository must give the reusable workflow `contents: write` when
 
 ## Repository requirements
 
-The caller repository should contain:
+The repository should contain:
 
 - `README.md`
 - `docs/`
-- `zensical.toml`, with `provider = "mike"` under `project.extra.version`
 - optional root-level `APIs/`, `examples/`, and `manifest/` directories
+
+A repository-level `zensical.toml` is optional for callers of the shared
+workflow. When it is absent, `prepare-docs.sh` generates the common
+configuration in the temporary build checkout, including repository metadata,
+AMWA branding, fixed navigation where required, source-viewer assets, and the
+shared 404 page. Keep a committed config only when a repository needs settings
+that the shared generator cannot infer. Versioned repositories may still use
+`provider = "mike"` under `project.extra.version` when maintaining their own
+configuration.
 
 For historical refs that predate the Zensical migration, the workflow fetches
 metadata from the repository's current default branch. `prepare-docs.sh` then
