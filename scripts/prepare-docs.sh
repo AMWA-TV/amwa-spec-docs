@@ -90,6 +90,8 @@ if not config.is_file():
         'features = ["navigation.footer"]\n\n'
         "[project.markdown_extensions.pymdownx.tabbed]\n"
         "alternate_style = true\n\n"
+        "[project.markdown_extensions.pymdownx.quotes]\n"
+        "callouts = true\n\n"
         "[project.markdown_extensions.pymdownx.superfences]\n\n"
         "[project.markdown_extensions.toc]\n"
         "permalink = false\n\n"
