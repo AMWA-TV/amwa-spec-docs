@@ -92,6 +92,7 @@ jobs:
 
   deploy:
     needs: lint
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-26.04
     env:
       SPEC_SERVER: specs.amwa.tv

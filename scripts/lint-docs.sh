@@ -23,7 +23,8 @@ find_args=(
 )
 
 echo Linting Markdown...
-if ! find "${find_args[@]}" | xargs -0 remark --rc-path "${REMARKRC}" --frail; then
+# Treat Remark warnings as lint failures; the docs workflow still deploys after lint failures.
+if ! find "${find_args[@]}" | xargs -0 remark --frail --rc-path "${REMARKRC}"; then
     failed=y
 fi
 
