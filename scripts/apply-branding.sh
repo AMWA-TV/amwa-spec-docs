@@ -280,9 +280,11 @@ if config.is_file():
         return section_text.rstrip() + f'\n{key} = [{json.dumps(value)}]\n'
 
     section = add_to_array(section, "extra_css", "stylesheets/amwa-branding.css")
+    section = add_to_array(section, "extra_css", "stylesheets/extra.css")
     if fixed_navigation:
         section = add_to_array(section, "extra_css", "stylesheets/fixed-navigation.css")
     section = add_to_array(section, "extra_javascript", "javascripts/amwa-branding.js")
+    section = add_to_array(section, "extra_javascript", "javascripts/json-viewer.js")
     config.write_text(text[:project.start()] + section + text[project.end():], encoding="utf-8")
 else:
     config = Path("mkdocs.yml")
@@ -302,8 +304,10 @@ else:
         return section_text.rstrip() + f"\n{key}:\n  - {value}\n"
 
     text = add_yaml_list(text, "extra_css", "stylesheets/amwa-branding.css")
+    text = add_yaml_list(text, "extra_css", "stylesheets/extra.css")
     if fixed_navigation:
         text = add_yaml_list(text, "extra_css", "stylesheets/fixed-navigation.css")
     text = add_yaml_list(text, "extra_javascript", "javascripts/amwa-branding.js")
+    text = add_yaml_list(text, "extra_javascript", "javascripts/json-viewer.js")
     config.write_text(text, encoding="utf-8")
 PY
