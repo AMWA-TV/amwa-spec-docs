@@ -8,7 +8,6 @@ import re
 from pathlib import Path
 from urllib.parse import unquote
 
-
 DOCS = Path("docs")
 NAV_SOURCE = DOCS / "README.md"
 CONFIG = Path("zensical.toml")
@@ -59,6 +58,8 @@ def parse_navigation() -> list[tuple[str, list[dict[str, object]]]]:
 
         indent = len(match.group("indent"))
         path = target_path(match.group("target"))
+        if path == "images/README.md":
+            continue
         if not path.startswith("http"):
             source_path = DOCS / path
             if source_path.is_dir() and (source_path / "index.md").is_file():

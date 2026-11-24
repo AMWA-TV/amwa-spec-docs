@@ -123,13 +123,7 @@ else:
             text,
             count=1,
         )
-    if not re.search(r"(?m)^not_in_nav\s*=", updated):
-        updated = re.sub(
-            r"(?m)^\[project\]\s*$",
-            '[project]\nnot_in_nav = "404.md"',
-            updated,
-            count=1,
-        )
+
     if updated != text:
         config.write_text(updated, encoding="utf-8")
 
@@ -302,6 +296,10 @@ fi
 # Render discovered RAML, schema, and example assets and generate their index
 # pages. This must happen after root-level assets have been staged into docs/.
 python3 "${TOOLKIT_DIR}/scripts/render-doc-assets.py"
+
+# This placeholder only documents the image-asset directory; remove it from the
+# staged build so it does not appear as an Images page in generated navigation.
+rm -f docs/images/README.md
 
 # Modern repositories maintain the intended left-hand navigation in
 # docs/README.md. Translate it after generated pages exist, then remove the

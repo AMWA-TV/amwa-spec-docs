@@ -1,8 +1,8 @@
 import importlib.util
 import os
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
 try:
     import tomllib
@@ -174,6 +174,21 @@ site_url = "https://example.test/"
                     ]
                 },
             )
+
+    def test_omits_images_readme_from_explicit_navigation(self):
+        self.write(
+            "docs/README.md",
+            "### Documentation\n\n- [Images](images/README.md)\n- [Overview](Overview.md)\n",
+        )
+        self.write("docs/images/README.md")
+        self.write("docs/Overview.md")
+
+        sections = MODULE.parse_navigation()
+
+        self.assertEqual(
+            sections,
+            [("Documentation", [{"label": "Overview", "path": "Overview.md", "children": []}])],
+        )
 
     def test_accepts_unheaded_document_links(self):
         self.write(

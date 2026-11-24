@@ -95,7 +95,10 @@ build_site() {
         bash "${TOOLKIT_DIR}/scripts/prepare-docs.sh"
         REPO_ROOT="${REPO_ROOT}" INCLUDE_SUBMODULES="${INCLUDE_SUBMODULES:-0}" \
             bash "${TOOLKIT_DIR}/scripts/stage-submodule-docs.sh"
-        "${VENV_DIR}/bin/zensical" build --clean
+        if ! "${VENV_DIR}/bin/zensical" build --clean; then
+            echo "Zensical build failed." >&2
+            exit 1
+        fi
         if [[ -f spec.yml ]]; then
             python3 "${TOOLKIT_DIR}/scripts/render-spec-json.py"
         else
