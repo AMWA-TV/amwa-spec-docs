@@ -205,10 +205,13 @@ For historical refs that predate the Zensical migration, the workflow fetches
 metadata from the repository's current default branch. `prepare-docs.sh` then
 generates a minimal `zensical.toml` in the historical build checkout and uses
 the current metadata header and introductory sections (title, badges, and
-repository introduction) with the historical README body. `prepare-docs.sh` runs from the caller repository root. It stages optional
-assets, discovers RAML/JSON files, optionally generates foldable source pages when
-source-viewer assets are present, rewrites source links,
-and sets `site_url` to the effective build root. For versioned builds this
+repository introduction) with the historical README body. It also places the
+`status` from that ref's `spec.yml` immediately below the front-page title,
+falling back to current default-branch metadata when the historical ref lacks a
+status. `prepare-docs.sh` runs from the caller repository root. It stages
+optional assets, discovers RAML/JSON files, optionally generates foldable source
+pages when source-viewer assets are present, rewrites source links, and sets
+`site_url` to the effective build root. For versioned builds this
 includes `BUILD_REF`, because Mike places the generated files below that path
 without rewriting generated URLs. For non-versioned builds it remains the
 unversioned `public-docs-root`.

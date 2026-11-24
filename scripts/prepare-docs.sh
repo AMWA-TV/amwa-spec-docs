@@ -369,3 +369,6 @@ for file in docs/*.md; do
 done
 
 echo "Rewrote repository-relative links to ${REPO_URL}"
+
+# Show current or historical spec.yml status directly under the front-page title.
+python3 "${TOOLKIT_DIR}/scripts/render-spec-status.py"
